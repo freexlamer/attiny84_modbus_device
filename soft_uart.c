@@ -4,11 +4,11 @@
 #include "soft_uart.h"
 
 
-char
+unsigned char
 uart_getc(void)
 {
     #ifdef    UART_RX_ENABLED
-    char c;
+    unsigned char c;
     uint8_t sreg;
 
     sreg = SREG;
@@ -44,12 +44,12 @@ uart_getc(void)
     SREG = sreg;
     return c;
     #else
-    return (-1);
+    return (0);
     #endif /* !UART_RX_ENABLED */
 }
 
 void
-uart_putc(char c)
+uart_putc(unsigned char c)
 {
     #ifdef    UART_TX_ENABLED
     uint8_t sreg;
