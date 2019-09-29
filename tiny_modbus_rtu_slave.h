@@ -24,11 +24,9 @@
 #define ERRORS_START_ADDRESS 0x0088
 #define ERRORS_END_ADDRESS 0x0088
 
-#define T3_5 35000000/9600
-
 unsigned char slaveID;
 void (*modbus_uart_putc)(unsigned char);
-unsigned int (*modbus_read_reg)(unsigned int address);
+bool (*modbus_read_reg)(unsigned int address, unsigned int *data);
 bool (*modbus_write_reg)(unsigned int address, unsigned int data);
 void (*modbus_led)(bool state);
 

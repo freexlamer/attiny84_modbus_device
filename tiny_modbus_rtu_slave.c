@@ -58,26 +58,30 @@ unsigned char pull_port(unsigned char c){
   				if (!broadcastFlag && (function == MODBUS_FUNCTION_READ_AO)) {
   					if (testAddress(startingAddress)) {
   						if (no_of_registers == 1) {
-  							unsigned char noOfBytes = no_of_registers * 2;
-  							unsigned char responseFrameSize = 5 + noOfBytes;
-  							frame[0] = slaveID;
-              				frame[1] = function;
-              				frame[2] = noOfBytes;
-  							unsigned int temp = (*modbus_read_reg)(startingAddress);
-  							frame[3] = temp >> 8;
-  							frame[4] = temp & 0x00FF;
-  							crc16 = calculateCRC(responseFrameSize - 2);
-  							frame[responseFrameSize - 2] = crc16 >> 8;
-              				frame[responseFrameSize - 1] = crc16 & 0xFF;
-  							sendPacket(responseFrameSize);
-  							buffer = 0;
+  							unsigned int temp = 0;
+
+  							if ((*modbus_read_reg)(startingAddress, &temp)) {
+  								unsigned char noOfBytes = no_of_registers * 2;
+	  							unsigned char responseFrameSize = 5 + noOfBytes;
+	  							frame[0] = slaveID;
+	              				frame[1] = function;
+	              				frame[2] = noOfBytes;
+	  							frame[3] = temp >> 8;
+	  							frame[4] = temp & 0x00FF;
+	  							crc16 = calculateCRC(responseFrameSize - 2);
+	  							frame[responseFrameSize - 2] = crc16 >> 8;
+	              				frame[responseFrameSize - 1] = crc16 & 0xFF;
+	  							sendPacket(responseFrameSize);
+	  							buffer = 0;
+  							}
+  							else 
+  								exceptionResponse(MODBUS_ERROR_SLAVE_DEVICE_FAILURE);
   						}
   						else
   							exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_VALUE);
   					}
   					else 
   						exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_ADDRESS);
-
   				}
   				else if (function == MODBUS_FUNCTION_WRITE_AO) {
   					if (testAddress(startingAddress)) {
