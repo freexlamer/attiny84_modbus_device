@@ -30,6 +30,7 @@ bool update_relay(unsigned int data){
     else {
         PORTA &= ~(1 << RELAY_R2);
     }
+    return true;
 }
 
 
@@ -62,7 +63,7 @@ bool write_reg(unsigned int address, unsigned int data){
         return m90e26_write_reg(address, data);;
     } 
     else if (address == RELAY_REG_ADDRESS) {
-        return true;
+        return update_relay(data);
     }
     else if ((address>=DS18B20_START_ADDRESS) && (address<=DS18B20_END_ADDRESS)) {
         return true;

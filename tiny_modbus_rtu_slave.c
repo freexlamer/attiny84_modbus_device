@@ -44,6 +44,11 @@ unsigned char pull_port(unsigned char c){
 
   		if (id == slaveID || broadcastFlag) {
   			
+			// костыль!
+			if ((frame[1] != MODBUS_FUNCTION_READ_AO) && (frame[1] != MODBUS_FUNCTION_WRITE_AO)) {
+				exceptionResponse(MODBUS_ERROR_ILLEGAL_FUNCTION);
+				return errorCount;
+			}
   			// combine the crc Low & High bytes
   			unsigned int crc = ((frame[buffer - 2] << 8) | frame[buffer - 1]);
   			
@@ -104,7 +109,7 @@ unsigned char pull_port(unsigned char c){
   			}
   			else 
   			{	
-  				sendPacket(buffer);
+				//sendPacket(buffer);
   				exceptionResponse(MODBUS_ERROR_CRC);
   			}
   		}
