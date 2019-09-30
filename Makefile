@@ -1,7 +1,6 @@
 # Name: Makefile
-#
-# A simple program for the ATtiny84 that blinks an LED.
-#
+
+# Based on https://github.com/electronut/tinyDriverP
 # electronut.in
 
 DEVICE      = attiny84
@@ -10,10 +9,11 @@ PROGRAMMER = -c usbtiny
 OBJECTS    = main.o soft_uart.o tiny_modbus_rtu_slave.o m90e26.o
 
 # for ATTiny85 - unset CKDIV8
-#int 8MHz div8
-#FUSES       = -U lfuse:w:0x62:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
+#int RC 8MHz div8
+FUSES       = -U lfuse:w:0x62:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
+
 #ext 8MHz div8
-FUSES       = -U lfuse:w:0x6E:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
+#FUSES       = -U lfuse:w:0x6E:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
 
 # Tune the lines below only if you know what you are doing:
 

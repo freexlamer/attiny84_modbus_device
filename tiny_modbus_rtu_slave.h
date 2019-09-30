@@ -1,3 +1,15 @@
+/*
+Based on ideas of https://github.com/angeloc/simplemodbusng
+
+The crc calculation is based on the work published 
+ by jpmzometa at 
+ http://sites.google.com/site/jpmzometa/arduino-mbrt
+ 
+ By Juan Bester : bester.juan@gmail.com
+*/
+
+// (C) freexlamer@github.com
+
 #include <stdbool.h>
 #include <util/delay.h>
 

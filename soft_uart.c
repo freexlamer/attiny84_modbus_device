@@ -1,3 +1,11 @@
+/**
+ * Copyright (c) 2017, Łukasz Marcin Podkalicki <lpodkalicki@gmail.com>
+ * Software UART for ATtiny13
+ */
+
+// (C) freexlamer@github.com
+
+
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>

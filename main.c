@@ -1,3 +1,6 @@
+// (C) freexlamer@github.com
+
+
 #include <util/delay.h>
 #include <avr/io.h>
 
@@ -36,9 +39,9 @@ bool update_relay(unsigned int data){
 
 bool read_reg(unsigned int address, unsigned int *data){
     if ((address>=M90E26_START_ADDRESS) && (address<=M90E26_END_ADDRESS)) {
-        // *data = 1;
-        //return true;
-        return m90e26_read_reg(address, data);
+        *data = 1;
+        return true;
+        //return m90e26_read_reg(address, data);
     } 
     else if (address == RELAY_REG_ADDRESS) {
         *data = relay_reg;
@@ -59,8 +62,8 @@ bool read_reg(unsigned int address, unsigned int *data){
 
 bool write_reg(unsigned int address, unsigned int data){
     if ((address>=M90E26_START_ADDRESS) && (address<=M90E26_END_ADDRESS)) {
-        //return true;
-        return m90e26_write_reg(address, data);;
+        return true;
+        //return m90e26_write_reg(address, data);;
     } 
     else if (address == RELAY_REG_ADDRESS) {
         return update_relay(data);
