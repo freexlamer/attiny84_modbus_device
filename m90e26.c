@@ -1,3 +1,5 @@
+// (C) freexlamer@github.com
+
 #include "m90e26.h"
 
 unsigned char m90e26_frame[6];

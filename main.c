@@ -1,3 +1,6 @@
+// (C) freexlamer@github.com
+
+
 #include <util/delay.h>
 #include <avr/io.h>
 

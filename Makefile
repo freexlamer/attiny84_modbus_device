@@ -1,7 +1,6 @@
 # Name: Makefile
-#
-# A simple program for the ATtiny84 that blinks an LED.
-#
+
+# Based on https://github.com/electronut/tinyDriverP
 # electronut.in
 
 DEVICE      = attiny84

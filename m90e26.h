@@ -1,3 +1,5 @@
+// (C) freexlamer@github.com
+
 #include <stdbool.h>
 
 #define M90E26_START_MARKER 0xFE
