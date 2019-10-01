@@ -191,7 +191,7 @@ bool testAddress(unsigned int address) {
 	if ((address>=M90E26_START_ADDRESS) && (address<=M90E26_END_ADDRESS)) {
 		return true;
 	} 
-	else if (address == RELAY_REG_ADDRESS) {
+	else if ((address >= RELAY_REG_START_ADDRESS) && (address <= RELAY_REG_END_ADDRESS) ) {
 		return true;
 	}
 	else if ((address>=DS18B20_START_ADDRESS) && (address<=DS18B20_END_ADDRESS)) {

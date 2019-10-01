@@ -13,24 +13,29 @@
 
 #define RELAY_R1 PA2
 #define RELAY_R2 PA3
-#define RELAY_REG_R1 0x01
-#define RELAY_REG_R2 0x02
+#define RELAY_REG_R1 0x0001
+#define RELAY_REG_R2 0x0001
 #define STATUS_LED PB2
 #define MODBUS_SELF_ADDRESS 0x10
 
-unsigned int relay_reg;
+unsigned int relay_r1_reg, relay_r2_reg;
 unsigned int ds18b20_cfg;
 
-bool update_relay(unsigned int data){
-    relay_reg = data;
-    if ((relay_reg & RELAY_REG_R1)>0) {
+bool update_relay_r1(unsigned int data){
+    relay_r1_reg = data;
+    if ((relay_r1_reg & RELAY_REG_R1)>0) {
         PORTA |= (1 << RELAY_R1);
     }
     else {
         PORTA &= ~(1 << RELAY_R1);
     }
 
-    if ((relay_reg & RELAY_REG_R2)>0) {
+    return true;
+}
+
+bool update_relay_r2(unsigned int data){
+    relay_r2_reg = data;
+    if ((relay_r2_reg & RELAY_REG_R2)>0) {
         PORTA |= (1 << RELAY_R2);
     }
     else {
@@ -59,8 +64,12 @@ bool read_reg(unsigned int address, unsigned int *data){
         //return true;
         return m90e26_read_reg(address, data);
     } 
-    else if (address == RELAY_REG_ADDRESS) {
-        *data = relay_reg;
+    else if (address == RELAY_REG_START_ADDRESS) {
+        *data = relay_r1_reg;
+        return true;
+    }
+    else if (address == RELAY_REG_END_ADDRESS) {
+        *data = relay_r2_reg;
         return true;
     }
     else if ((address>=DS18B20_START_ADDRESS) && (address<=DS18B20_END_ADDRESS)) {
@@ -80,8 +89,11 @@ bool write_reg(unsigned int address, unsigned int data){
         //return true;
         return m90e26_write_reg(address, data);;
     } 
-    else if (address == RELAY_REG_ADDRESS) {
-        return update_relay(data);
+    else if (address == RELAY_REG_START_ADDRESS) {
+        return update_relay_r1(data);
+    }
+    else if (address == RELAY_REG_END_ADDRESS) {
+        return update_relay_r2(data);
     }
     else if ((address>=DS18B20_START_ADDRESS) && (address<=DS18B20_END_ADDRESS)) {
         return false;
@@ -105,7 +117,8 @@ void led_set(bool stat) {
 
 
 void relay_init(){
-    update_relay(0);
+    update_relay_r1(0);
+    update_relay_r2(0);
     DDRA |= (1 << RELAY_R1 | 1 << RELAY_R2);
 }
 
