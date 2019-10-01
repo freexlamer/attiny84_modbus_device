@@ -1,6 +1,7 @@
 // (C) freexlamer@github.com
 
 
+#include <stdbool.h>
 #include <util/delay.h>
 #include <avr/io.h>
 
@@ -8,6 +9,7 @@
 #include "soft_uart.h"
 #include "tiny_modbus_rtu_slave.h"
 #include "m90e26.h"
+#include "one_wire.h"
 
 #define RELAY_R1 PA2
 #define RELAY_R2 PA3
@@ -17,6 +19,7 @@
 #define MODBUS_SELF_ADDRESS 0x10
 
 unsigned int relay_reg;
+unsigned int ds18b20_cfg;
 
 bool update_relay(unsigned int data){
     relay_reg = data;
@@ -36,8 +39,21 @@ bool update_relay(unsigned int data){
     return true;
 }
 
+bool get_temperature_sensor(unsigned int address, unsigned int *data) {
+    if (address == DS18B20_START_ADDRESS) {
+        return DS18B20_get(data, &ds18b20_cfg);
+    }
+    else if (address == DS18B20_END_ADDRESS) {
+        *data = ds18b20_cfg;
+        return true;
+    }
+    else
+        return false;
+}
 
 bool read_reg(unsigned int address, unsigned int *data){
+    //bool status;
+
     if ((address>=M90E26_START_ADDRESS) && (address<=M90E26_END_ADDRESS)) {
         // *data = 1;
         //return true;
@@ -48,8 +64,7 @@ bool read_reg(unsigned int address, unsigned int *data){
         return true;
     }
     else if ((address>=DS18B20_START_ADDRESS) && (address<=DS18B20_END_ADDRESS)) {
-        *data = 3;
-        return true;
+        return get_temperature_sensor(address, data);
     }
     else if ((address>=ERRORS_START_ADDRESS) && (address<=ERRORS_END_ADDRESS)) {
         *data = 4;
@@ -69,7 +84,7 @@ bool write_reg(unsigned int address, unsigned int data){
         return update_relay(data);
     }
     else if ((address>=DS18B20_START_ADDRESS) && (address<=DS18B20_END_ADDRESS)) {
-        return true;
+        return false;
     }
     else if ((address>=ERRORS_START_ADDRESS) && (address<=ERRORS_END_ADDRESS)) {
         return true;

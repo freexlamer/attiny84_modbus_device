@@ -6,7 +6,7 @@
 DEVICE      = attiny84
 CLOCK      = 1000000
 PROGRAMMER = -c usbtiny
-OBJECTS    = main.o soft_uart.o tiny_modbus_rtu_slave.o m90e26.o
+OBJECTS    = main.o soft_uart.o tiny_modbus_rtu_slave.o m90e26.o one_wire.o
 
 # for ATTiny85 - unset CKDIV8
 #int 8MHz div8
