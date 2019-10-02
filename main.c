@@ -117,6 +117,10 @@ void led_set(bool stat) {
 
 
 void relay_init(){
+    /* Выводим на пины 0, т.е. отключаем
+    ** Потом переводим пины в режим вывода
+    */
+
     update_relay_r1(0);
     update_relay_r2(0);
     DDRA |= (1 << RELAY_R1 | 1 << RELAY_R2);
@@ -126,9 +130,20 @@ void relay_init(){
 int
 main(void)
 {
+    // Ports initialization
+    // Status led pin
     DDRB = (1 << STATUS_LED);
+    // Relays pins
     relay_init();
 
+    // UARTs initialization
+    uart_init_rx_pin();
+    uart_init_tx_pin();
+
+    uart2_init_rx_pin();
+    uart2_init_tx_pin();
+
+    // MODBUS initialization
     slaveID = MODBUS_SELF_ADDRESS;
 
     modbus_uart_putc = &uart_putc;
@@ -136,6 +151,7 @@ main(void)
     modbus_write_reg = &write_reg;
     modbus_led = &led_set;
 
+    // M90E26 initialization
     m90e26_uart_putc = &uart2_putc;
     m90e26_uart_getc = &uart2_getc;
 

@@ -12,8 +12,21 @@
 #include "soft_uart.h"
 
 
-unsigned char
-uart_getc(void)
+void uart_init_rx_pin(){
+	#ifdef    UART_RX_ENABLED
+	UART_RX_PORT_REG &= ~(1 << UART_RX_PIN);
+	UART_RX_DDR_REG &= ~(1 << UART_RX_PIN);
+	#endif /* !UART_RX_ENABLED */
+}
+
+void uart_init_tx_pin(){
+	#ifdef    UART_TX_ENABLED
+	UART_TX_PORT_REG |= 1 << UART_TX_PIN;
+	UART_TX_DDR_REG |= 1 << UART_TX_PIN;
+	#endif /* !UART_TX_ENABLED */
+}
+
+unsigned char uart_getc(void)
 {
     #ifdef    UART_RX_ENABLED
     unsigned char c;
@@ -21,8 +34,6 @@ uart_getc(void)
 
     sreg = SREG;
     cli();
-    PORTA &= ~(1 << UART_RX);
-    DDRA &= ~(1 << UART_RX);
     __asm volatile(
     " ldi r18, %[rxdelay2] \n\t" // 1.5 bit delay
     " ldi %0, 0x80 \n\t" // bit shift counter
@@ -43,8 +54,8 @@ uart_getc(void)
     " dec r18 \n\t"
     " brne StopBit \n\t"
     : "=r" (c)
-    : [uart_port] "I" (_SFR_IO_ADDR(PORTA)),
-    [uart_pin] "I" (UART_RX),
+    : [uart_port] "I" (_SFR_IO_ADDR(UART_RX_PORT_REG)),
+    [uart_pin] "I" (UART_RX_PIN),
     [rxdelay] "I" (RXDELAY),
     [rxdelay2] "I" (RXDELAY2)
     : "r0","r18","r19"
@@ -64,8 +75,6 @@ uart_putc(unsigned char c)
 
     sreg = SREG;
     cli();
-    PORTA |= 1 << UART_TX;
-    DDRA |= 1 << UART_TX;
     asm volatile(
     " cbi %[uart_port], %[uart_pin] \n\t" // start bit
     " in r0, %[uart_port] \n\t"
@@ -85,8 +94,8 @@ uart_putc(unsigned char c)
     " out %[uart_port], r0 \n\t"
     " brne TxLoop \n\t"
     :
-    : [uart_port] "I" (_SFR_IO_ADDR(PORTA)),
-    [uart_pin] "I" (UART_TX),
+    : [uart_port] "I" (_SFR_IO_ADDR(UART_TX_PORT_REG)),
+    [uart_pin] "I" (UART_TX_PIN),
     [txdelay] "I" (TXDELAY),
     [ch] "r" (c)
     : "r0","r28","r29","r30"
@@ -101,6 +110,20 @@ uart_puts(const char *s)
     while (*s) uart_putc(*(s++));
 }
 
+void uart2_init_rx_pin(){
+	#ifdef    UART2_RX_ENABLED
+	UART2_RX_PORT_REG &= ~(1 << UART2_RX_PIN);
+	UART2_RX_DDR_REG &= ~(1 << UART2_RX_PIN);
+	#endif /* !UART2_RX_ENABLED */
+}
+
+void uart2_init_tx_pin(){
+	#ifdef    UART2_TX_ENABLED
+	UART2_TX_PORT_REG |= 1 << UART2_TX_PIN;
+	UART2_TX_DDR_REG |= 1 << UART2_TX_PIN;
+	#endif /* !UART2_TX_ENABLED */
+}
+
 unsigned char
 uart2_getc(void)
 {
@@ -110,8 +133,6 @@ uart2_getc(void)
 
     sreg = SREG;
     cli();
-    PORTA &= ~(1 << UART2_RX);
-    DDRA &= ~(1 << UART2_RX);
     __asm volatile(
     " ldi r18, %[uart2_rxdelay2] \n\t" // 1.5 bit delay
     " ldi %0, 0x80 \n\t" // bit shift counter
@@ -132,8 +153,8 @@ uart2_getc(void)
     " dec r18 \n\t"
     " brne uart2_StopBit \n\t"
     : "=r" (c)
-    : [uart2_port] "I" (_SFR_IO_ADDR(PORTA)),
-    [uart2_pin] "I" (UART2_RX),
+    : [uart2_port] "I" (_SFR_IO_ADDR(UART2_RX_PORT_REG)),
+    [uart2_pin] "I" (UART2_RX_PIN),
     [uart2_rxdelay] "I" (UART2_RXDELAY),
     [uart2_rxdelay2] "I" (UART2_RXDELAY2)
     : "r0","r18","r19"
@@ -153,8 +174,6 @@ uart2_putc(unsigned char c)
 
     sreg = SREG;
     cli();
-    PORTA |= 1 << UART2_TX;
-    DDRA |= 1 << UART2_TX;
     asm volatile(
     " cbi %[uart2_port], %[uart2_pin] \n\t" // start bit
     " in r0, %[uart2_port] \n\t"
@@ -174,8 +193,8 @@ uart2_putc(unsigned char c)
     " out %[uart2_port], r0 \n\t"
     " brne uart2_TxLoop \n\t"
     :
-    : [uart2_port] "I" (_SFR_IO_ADDR(PORTA)),
-    [uart2_pin] "I" (UART2_TX),
+    : [uart2_port] "I" (_SFR_IO_ADDR(UART2_TX_PORT_REG)),
+    [uart2_pin] "I" (UART2_TX_PIN),
     [uart2_txdelay] "I" (UART2_TXDELAY),
     [ch] "r" (c)
     : "r0","r28","r29","r30"

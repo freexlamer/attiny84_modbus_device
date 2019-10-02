@@ -12,11 +12,15 @@
 #define    UART_TX_ENABLED        (1) // Enable UART TX
 
 #if defined(UART_TX_ENABLED) && !defined(UART_TX)
-# define        UART_TX         PA6
+# define        UART_TX_PIN         PA6
+# define		UART_TX_DDR_REG		DDRA
+# define		UART_TX_PORT_REG	PORTA
 #endif  /* !UART_TX */
 
 #if defined(UART_RX_ENABLED) && !defined(UART_RX)
-# define        UART_RX         PA5
+# define        UART_RX_PIN         PA5
+# define		UART_RX_DDR_REG		DDRA
+# define		UART_RX_PORT_REG	PORTA
 #endif  /* !UART_RX */
 
 #if (defined(UART_TX_ENABLED) || defined(UART_RX_ENABLED)) && !defined(UART_BAUDRATE)
@@ -35,11 +39,15 @@
 #define    UART2_TX_ENABLED        (1) // Enable UART TX
 
 #if defined(UART2_TX_ENABLED) && !defined(UART2_TX)
-# define        UART2_TX         PA1
+# define        UART2_TX_PIN		PA1
+# define		UART2_TX_DDR_REG	DDRA
+# define		UART2_TX_PORT_REG	PORTA
 #endif  /* !UART2_TX */
 
 #if defined(UART2_RX_ENABLED) && !defined(UART2_RX)
-# define        UART2_RX         PA0
+# define		UART2_RX_PIN		PA0
+# define		UART2_RX_DDR_REG	DDRA
+# define		UART2_RX_PORT_REG	PORTA
 #endif  /* !UART2_RX */
 
 #if (defined(UART2_TX_ENABLED) || defined(UART2_RX_ENABLED)) && !defined(UART2_BAUDRATE)
@@ -55,10 +63,13 @@
 #endif
 
 //********** uart Prototypes **********//
-
+void uart_init_rx_pin();
+void uart_init_tx_pin();
 unsigned char uart_getc();
 void uart_putc(unsigned char c);
 void uart_puts(const char *s);
 
+void uart2_init_rx_pin();
+void uart2_init_tx_pin();
 unsigned char uart2_getc();
 void uart2_putc(unsigned char c);
