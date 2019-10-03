@@ -11,5 +11,5 @@
 unsigned char DS18B20_init(void);
 unsigned char DS18B20_read(void);
 void DS18B20_write(unsigned char data);
-bool DS18B20_get(unsigned int *data, unsigned char *cfg);
+bool DS18B20_get(unsigned int *data, unsigned int *cfg);
 

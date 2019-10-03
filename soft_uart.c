@@ -10,6 +10,7 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include "soft_uart.h"
+#include "m90e26.h"
 
 
 void uart_init_rx_pin(){
@@ -61,6 +62,7 @@ unsigned char uart_getc(void)
     : "r0","r18","r19"
     );
     SREG = sreg;
+    sei();
     return c;
     #else
     return (0);
@@ -101,6 +103,7 @@ uart_putc(unsigned char c)
     : "r0","r28","r29","r30"
     );
     SREG = sreg;
+    sei();
     #endif /* !UART_TX_ENABLED */
 }
 
@@ -132,11 +135,13 @@ uart2_getc(void)
     uint8_t sreg;
 
     sreg = SREG;
-    cli();
+    //cli();
     __asm volatile(
     " ldi r18, %[uart2_rxdelay2] \n\t" // 1.5 bit delay
     " ldi %0, 0x80 \n\t" // bit shift counter
     "uart2_WaitStart: \n\t"
+    " sbic %[timeout_ioreg], %[timeout_flag] \n\t"
+    " rjmp uart2_RxExit \n\t"
     " sbic %[uart2_port]-2, %[uart2_pin] \n\t" // wait for start edge
     " rjmp uart2_WaitStart \n\t"
     "uart2_RxBit: \n\t"
@@ -152,11 +157,14 @@ uart2_getc(void)
     "uart2_StopBit: \n\t"
     " dec r18 \n\t"
     " brne uart2_StopBit \n\t"
+    "uart2_RxExit: \n\t"
     : "=r" (c)
     : [uart2_port] "I" (_SFR_IO_ADDR(UART2_RX_PORT_REG)),
     [uart2_pin] "I" (UART2_RX_PIN),
     [uart2_rxdelay] "I" (UART2_RXDELAY),
-    [uart2_rxdelay2] "I" (UART2_RXDELAY2)
+    [uart2_rxdelay2] "I" (UART2_RXDELAY2),
+    [timeout_ioreg] "I" (_SFR_IO_ADDR(TIMEOUT_IOREG)),
+    [timeout_flag] "I" (TIMEOUT_FLAG)
     : "r0","r18","r19"
     );
     SREG = sreg;
@@ -200,6 +208,7 @@ uart2_putc(unsigned char c)
     : "r0","r28","r29","r30"
     );
     SREG = sreg;
+    sei();
     #endif /* !UART2_TX_ENABLED */
 }
 

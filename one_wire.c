@@ -51,7 +51,7 @@ void DS18B20_write(unsigned char data)
 	}
 }                       // разрешаем прерывания
 
-bool DS18B20_get(unsigned int *data, unsigned char *cfg) {
+bool DS18B20_get(unsigned int *data, unsigned int *cfg) {
 
 	unsigned char data_h, data_l;
 

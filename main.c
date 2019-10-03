@@ -1,9 +1,10 @@
 // (C) freexlamer@github.com
 
-
 #include <stdbool.h>
 #include <util/delay.h>
 #include <avr/io.h>
+#include <avr/interrupt.h>
+#include <avr/wdt.h>
 
 #include "settings.h"
 #include "soft_uart.h"
@@ -127,8 +128,7 @@ void relay_init(){
 }
 
 
-int
-main(void)
+int main(void)
 {
     // Ports initialization
     // Status led pin
@@ -143,6 +143,10 @@ main(void)
     uart2_init_rx_pin();
     uart2_init_tx_pin();
 
+    // WatchdogTimer initialization
+
+    
+
     // MODBUS initialization
     slaveID = MODBUS_SELF_ADDRESS;
 
@@ -154,6 +158,9 @@ main(void)
     // M90E26 initialization
     m90e26_uart_putc = &uart2_putc;
     m90e26_uart_getc = &uart2_getc;
+
+    wdt_disable();
+    sei();
 
     /* loop */
     while (1) {
