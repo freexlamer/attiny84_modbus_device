@@ -60,6 +60,7 @@ int perform_calibration() {
 
     while (1) {
     	TCNT1 = 0;
+
 	    __asm volatile(
 	    "calibrationWaitStart: \n\t"
 	    " sbic %[uart_port]-2, %[uart_pin] \n\t" // wait for start edge
@@ -75,15 +76,12 @@ int perform_calibration() {
 	    " ldi r18, %[timer_stop] \n\t"
 	    " out %[tccrb], r18 \n\t"
 
-	    "StopBit: \n\t"
-	    " dec r18 \n\t"
-	    " brne StopBit \n\t"
 	    :: [uart_port] "I" (_SFR_IO_ADDR(UART_RX_PORT_REG)),
 	    [uart_pin] "I" (UART_RX_PIN),
 	    [timer_start] "I" (TIMER_START),
 	    [timer_stop] "I" (TIMER_STOP),
 	    [tccrb] "I" (_SFR_IO_ADDR(TCCR1B))
-	    : "r0","r18","r19"
+	    : "r0","r18"
 	    );
 
 	    i = TCNT1;
@@ -94,17 +92,17 @@ int perform_calibration() {
 	    else if (i < (TIMER_REFERENCE-REFERENCE_HYSTERESIS/2)) {
 	    	osctmp++;	
 	    }
-	    else
+	    else {
+	    	SREG = sreg;
 	    	return osctmp;
+	    }
 
 	    OSCCAL = osctmp;
 	    (*osc_calibration_uart_putc)(osctmp);
 
 	    (*osc_calibration_toggle_led)();
-
     }
 
     SREG = sreg;
-
     return -1;
 }
