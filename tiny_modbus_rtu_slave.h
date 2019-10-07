@@ -38,6 +38,10 @@ The crc calculation is based on the work published
 #define ERRORS_START_ADDRESS 0x0088
 #define ERRORS_END_ADDRESS 0x0088
 
+#define DEBUG_REGS_START_ADDRESS 0x0090
+#define DEBUG_REGS_END_ADDRESS 0x00A0
+
+
 unsigned char slaveID;
 void (*modbus_uart_putc)(unsigned char);
 bool (*modbus_read_reg)(unsigned int address, unsigned int *data);
