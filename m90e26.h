@@ -1,6 +1,8 @@
 // (C) freexlamer@github.com
 
 #include <stdbool.h>
+#include <inttypes.h>
+#include <stddef.h>
 #include <avr/interrupt.h>
 #include <avr/wdt.h>  
 
@@ -20,8 +22,10 @@ TIMEOUT_IOREG &= ~(_BV(TIMEOUT_FLAG));
 
 #define check_timeout_flag() ((TIMEOUT_IOREG & _BV(TIMEOUT_FLAG))==0)
 
-void (*m90e26_uart_putc)(unsigned char);
-unsigned char (*m90e26_uart_getc)();
+char m90e26_serial_port_num;
+
+size_t (*m90e26_SerialWrite)(char, uint8_t);
+int (*m90e26_SerialRead)(char);
 
 bool m90e26_read_reg(unsigned char address, unsigned int *data);
 bool m90e26_write_reg(unsigned char address, unsigned int data);

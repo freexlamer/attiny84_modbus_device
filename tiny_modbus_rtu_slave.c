@@ -28,13 +28,17 @@ unsigned int calculateCRC(unsigned char bufferSize);
 void sendPacket(unsigned char bufferSize);
 bool testAddress(unsigned int address);
 
-unsigned char pull_port(unsigned char c){
+unsigned char pull_port(int c){
+
+	if (c == -1) {
+		return 0;
+	}
 
 	if (!overflow) {
 		if (buffer == BUFFER_SIZE) {
 			overflow = true;
 		}
-		frame[buffer] = c;
+		frame[buffer] = (unsigned char)c;
 		buffer++;
 	}
 
@@ -178,7 +182,7 @@ void sendPacket(unsigned char bufferSize)
 {
   
   for (unsigned char i = 0; i < bufferSize; i++)
-    (*modbus_uart_putc)(frame[i]);
+    (*modbus_SerialWrite)(modbus_serial_port_num, frame[i]);
  
   // allow a frame delay to indicate end of transmission
   _delay_ms(3);

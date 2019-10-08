@@ -12,6 +12,8 @@ The crc calculation is based on the work published
 
 
 #include <stdbool.h>
+#include <inttypes.h>
+#include <stddef.h>
 #include <util/delay.h>
 
 #define BUFFER_SIZE 16
@@ -43,10 +45,12 @@ The crc calculation is based on the work published
 
 
 unsigned char slaveID;
-void (*modbus_uart_putc)(unsigned char);
+char modbus_serial_port_num;
+
+size_t (*modbus_SerialWrite)(char, uint8_t);
 bool (*modbus_read_reg)(unsigned int address, unsigned int *data);
 bool (*modbus_write_reg)(unsigned int address, unsigned int data);
-void (*modbus_led)(bool state);
+void (*modbus_led)(bool);
 
-unsigned char pull_port(unsigned char c);
+unsigned char pull_port(int c);
 

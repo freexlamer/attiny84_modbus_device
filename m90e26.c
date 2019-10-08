@@ -21,7 +21,7 @@ bool m90e26_write_reg(unsigned char address, unsigned int data) {
 	m90e26_send_packet(5);
 
 	wdt_int_enable(TIMEOUT_WRITE_WDTO);
-	unsigned char ack = (*m90e26_uart_getc)();
+	unsigned char ack = (*m90e26_SerialRead)(m90e26_serial_port_num);
 	wdt_disable();
 
 	if (check_timeout_flag())
@@ -38,9 +38,9 @@ bool m90e26_read_reg(unsigned char address, unsigned int *data) {
 	m90e26_send_packet(3);
 
 	wdt_int_enable(TIMEOUT_READ_WDTO);
-	m90e26_frame[0] = (*m90e26_uart_getc)();
-	m90e26_frame[1] = (*m90e26_uart_getc)();
-	m90e26_frame[2] = (*m90e26_uart_getc)();
+	m90e26_frame[0] = (*m90e26_SerialRead)(m90e26_serial_port_num);
+	m90e26_frame[1] = (*m90e26_SerialRead)(m90e26_serial_port_num);
+	m90e26_frame[2] = (*m90e26_SerialRead)(m90e26_serial_port_num);
 	wdt_disable();
 
 	/*
@@ -74,7 +74,7 @@ void m90e26_send_packet(unsigned char bufferSize)
 {
   
   for (unsigned char i = 0; i < bufferSize; i++)
-    (*m90e26_uart_putc)(m90e26_frame[i]);
+    (*m90e26_SerialWrite)(m90e26_serial_port_num, m90e26_frame[i]);
 
 }
 

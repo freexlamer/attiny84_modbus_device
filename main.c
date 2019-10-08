@@ -7,7 +7,7 @@
 #include <avr/wdt.h>
 
 #include "settings.h"
-#include "soft_uart.h"
+#include "SoftwareSerial.h"
 #include "tiny_modbus_rtu_slave.h"
 #include "m90e26.h"
 #include "one_wire.h"
@@ -163,6 +163,7 @@ void relay_init(){
 int main(void)
 {
     uint8_t tmp;
+    int rx_data;
     // Ports initialization
     // Status led pin
     STATUS_LED_DDR = (1 << STATUS_LED_PIN);
@@ -170,50 +171,70 @@ int main(void)
     while(1) {
         perform_main_loop_exit = false;
 
+        /*
         if (perform_forced_calibration || !update_osccal_from_eeprom()) {
             osc_calibration_toggle_led = &led_toggle;
-            osc_calibration_uart_putc =  &uart_putc;
-            uart_init_tx_pin();
-            uart_init_rx_pin();
+            osc_calibration_serial_port_num = SOFT_UART0;
+            osc_calibration_SerialWrite =  &softSerialWrite;
+            softSerialBegin(SOFT_UART0, 9600, &DDRA, &PORTA, &PINA, PA5, PA6);
 
             tmp = perform_calibration();
             perform_forced_calibration = false;
 
-            uart_init_tx_pin();
-            uart_putc(0xFF);
+            softSerialWrite(SOFT_UART0, 0xFF);
             write_from_osccal_to_eeprom();
+
+            softSerialEnd(SOFT_UART0);
         }
 
         update_osccal_from_eeprom();
+        */
         
         // Relays pins
         relay_init();
 
         // UARTs initialization
-        uart_init_rx_pin();
-        uart_init_tx_pin();
-
-        uart2_init_rx_pin();
-        uart2_init_tx_pin();
+        softSerialBegin(SOFT_UART0, 9600, &DDRA, &PORTA, &PINA, PA5, PA6);
+        softSerialBegin(SOFT_UART1, 9600, &DDRA, &PORTA, &PINA, PA0, PA1);
 
         // MODBUS initialization
         slaveID = MODBUS_SELF_ADDRESS;
 
-        modbus_uart_putc = &uart_putc;
+        modbus_serial_port_num = SOFT_UART0;
+        modbus_SerialWrite = &softSerialWrite;
         modbus_read_reg = &read_reg;
         modbus_write_reg = &write_reg;
         modbus_led = &led_set;
 
         // M90E26 initialization
-        m90e26_uart_putc = &uart2_putc;
-        m90e26_uart_getc = &uart2_getc;
+        m90e26_serial_port_num = SOFT_UART1;
+        m90e26_SerialWrite = &softSerialWrite;
+        m90e26_SerialRead = &softSerialRead;
 
+        led_toggle();
+        
         /* loop */
         while (1) {
             if (perform_main_loop_exit) 
                 break;
-            pull_port(uart_getc());
+
+            rx_data = softSerialRead(SOFT_UART0);
+
+            if (rx_data > -1) {
+                led_toggle();
+                pull_port(rx_data);
+            }
+
+            /*
+            if (softSerialAvailable(SOFT_UART0)) {
+                led_toggle();
+                pull_port(softSerialRead(SOFT_UART0));
+            }
+            */
         }
+
+        softSerialEnd(SOFT_UART0);
+        softSerialEnd(SOFT_UART1);
     }
     
 }

@@ -98,7 +98,7 @@ int perform_calibration() {
 	    }
 
 	    OSCCAL = osctmp;
-	    (*osc_calibration_uart_putc)(osctmp);
+	    (*osc_calibration_SerialWrite)(osc_calibration_serial_port_num, osctmp);
 
 	    (*osc_calibration_toggle_led)();
     }

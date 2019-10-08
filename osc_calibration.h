@@ -15,8 +15,10 @@
 //#define REFERENCE_HYSTERESIS 6
 #define REFERENCE_HYSTERESIS 4
 
+char osc_calibration_serial_port_num;
+
 void (*osc_calibration_toggle_led)();
-void (*osc_calibration_uart_putc)(unsigned char);
+size_t (*osc_calibration_SerialWrite)(char, uint8_t);
 
 bool update_osccal_from_eeprom();
 void write_from_osccal_to_eeprom();

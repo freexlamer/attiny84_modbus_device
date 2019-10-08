@@ -4,17 +4,16 @@
 # electronut.in
 
 DEVICE      = attiny84
-CLOCK      = 1000000
+CLOCK      = 8000000
 PROGRAMMER = -c usbtiny
-OBJECTS    = main.o soft_uart.o tiny_modbus_rtu_slave.o m90e26.o one_wire.o osc_calibration.o
+OBJECTS    = main.o tiny_modbus_rtu_slave.o m90e26.o one_wire.o osc_calibration.o SoftwareSerial.o
 OBJECTS_PREPARE = osc_calibration.o prepare.o
 
 # for ATTiny85 - unset CKDIV8
-#int 8MHz div8
-FUSES       = -U lfuse:w:0x62:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
-#ext 8MHz div8
-#FUSES       = -U lfuse:w:0x6E:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
-FUSES_EXTOSC = -U lfuse:w:0x6E:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
+#int 8MHz
+FUSES       = -U lfuse:w:0xE2:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
+#ext 8MHz
+FUSES_EXTOSC = -U lfuse:w:0xEE:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
 # Tune the lines below only if you know what you are doing:
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) 
