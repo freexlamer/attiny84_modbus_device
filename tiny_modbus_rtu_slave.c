@@ -182,7 +182,7 @@ void sendPacket(unsigned char bufferSize)
 {
   
   for (unsigned char i = 0; i < bufferSize; i++)
-    (*modbus_SerialWrite)(modbus_serial_port_num, frame[i]);
+    (*modbus_SerialWrite)(frame[i], modbus_serial_port);
  
   // allow a frame delay to indicate end of transmission
   _delay_ms(3);

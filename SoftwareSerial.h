@@ -30,31 +30,17 @@ This code configures:
 #include <stdbool.h>
 
 
+
 //
 // Defines
 //
-//#define true 1
-//#define false 0
+#define true 1
+#define false 0
 #define HIGH 1
 #define LOW 0
 
-//
-// Definitions
-//
-#define UARTS_COUNT		2
-#define SOFT_UART0	0
-#define SOFT_UART1	1
-#define _SS_MAX_RX_BUFF 16 // RX buffer size, must be (1<<n)
-#define _SS_RX_BUFF_MASK (_SS_MAX_RX_BUFF-1)
-#ifndef GCC_VERSION
-#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
-#endif
 
 
-//
-// Types
-//
-typedef uint8_t byte;
 
 typedef volatile struct{
 	volatile long _SPEED;
@@ -63,7 +49,7 @@ typedef volatile struct{
 	char* _PIN;
 	char _RX_PIN_NUM;
 	char _TX_PIN_NUM;
-	char _receive_buffer[_SS_MAX_RX_BUFF];
+	char _receive_buffer[16];
 	uint8_t _receive_buffer_tail;
 	uint8_t _receive_buffer_head;
 	uint16_t _buffer_overflow;
@@ -72,28 +58,42 @@ typedef volatile struct{
 	uint16_t _rx_delay_stopbit;
 	uint16_t _tx_delay;
 
-} Uart;
+}Uart;
+
+
+
+
+//
+// Types
+//
+typedef uint8_t byte;
+
+
+//
+// Definitions
+//
+#define _SS_MAX_RX_BUFF 16 // RX buffer size, must be (1<<n)
+#define _SS_RX_BUFF_MASK (_SS_MAX_RX_BUFF-1)
+#ifndef GCC_VERSION
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#endif
 
 //
 // public methods
 //
-
-Uart serials[UARTS_COUNT];
-
 Uart *serial_0;
 Uart *serial_1;
 
-void softSerialBegin(char port_num, long speed, char *ddr, char *port, 
-					 char *pin, char rx_pin, char tx_pin);
-void softSerialEnd(char port_num);
-bool softSerialOverflow(char port_num);
-int softSerialPeek(char port_num);
-size_t softSerialWrite(char port_num, uint8_t b);
-int softSerialRead(char port_num);
-int softSerialAvailable(char port_num);
-void softSerialFlush(char port_num);
+void softSerialBegin(Uart *p);
+void softSerialEnd();
+bool softSerialOverflow(Uart *p);
+int softSerialPeek(Uart *p);
+size_t softSerialWrite(uint8_t b, Uart *p);
+int softSerialRead(Uart *p);
+int softSerialAvailable(Uart *p);
+void softSerialFlush(Uart *p);
 
-void handler(char port_num);
+void handler(Uart *p);
 
 char isCalibDataReady();
 char getImpulsWidth();

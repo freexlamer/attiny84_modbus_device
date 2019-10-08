@@ -16,6 +16,8 @@ The crc calculation is based on the work published
 #include <stddef.h>
 #include <util/delay.h>
 
+#include "SoftwareSerial.h"
+
 #define BUFFER_SIZE 16
 
 #define MODBUS_BROADCAST_ID 0x00
@@ -45,9 +47,9 @@ The crc calculation is based on the work published
 
 
 unsigned char slaveID;
-char modbus_serial_port_num;
+Uart *modbus_serial_port;
 
-size_t (*modbus_SerialWrite)(char, uint8_t);
+size_t (*modbus_SerialWrite)(uint8_t b, Uart *p);
 bool (*modbus_read_reg)(unsigned int address, unsigned int *data);
 bool (*modbus_write_reg)(unsigned int address, unsigned int data);
 void (*modbus_led)(bool);

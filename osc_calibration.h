@@ -3,6 +3,7 @@
 #include <avr/eeprom.h>
 #include <avr/interrupt.h>
 #include "soft_uart.h"
+#include "SoftwareSerial.h"
 
 #define OSCCAL_EEADDR 0xFF
 

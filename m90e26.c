@@ -12,6 +12,8 @@ void m90e26_send_packet(unsigned char bufferSize);
 void wdt_int_enable(unsigned char timeout);
 
 bool m90e26_write_reg(unsigned char address, unsigned int data) {
+	int rx_data;
+
 	m90e26_frame[0] = M90E26_START_MARKER;
 	m90e26_frame[1] = address & 0x7F; // address and read
 	m90e26_frame[2] = data >> 8; // DATA_MSB
@@ -20,9 +22,13 @@ bool m90e26_write_reg(unsigned char address, unsigned int data) {
 
 	m90e26_send_packet(5);
 
-	wdt_int_enable(TIMEOUT_WRITE_WDTO);
-	unsigned char ack = (*m90e26_SerialRead)(m90e26_serial_port_num);
-	wdt_disable();
+	//wdt_int_enable(TIMEOUT_WRITE_WDTO);
+	do {
+		rx_data = (*m90e26_SerialRead)(m90e26_serial_port);
+	} while(rx_data < 0);
+	unsigned char ack = (unsigned char)rx_data;
+
+	//wdt_disable();
 
 	if (check_timeout_flag())
 		return (m90e26_frame[4] == ack);
@@ -31,17 +37,24 @@ bool m90e26_write_reg(unsigned char address, unsigned int data) {
 }
 
 bool m90e26_read_reg(unsigned char address, unsigned int *data) {
+	int rx_data;
+	char i;
+
 	m90e26_frame[0] = M90E26_START_MARKER;
 	m90e26_frame[1] = address | 0x80; // address and write
 	m90e26_frame[2] = m90e26_frame[1];
 
 	m90e26_send_packet(3);
 
-	wdt_int_enable(TIMEOUT_READ_WDTO);
-	m90e26_frame[0] = (*m90e26_SerialRead)(m90e26_serial_port_num);
-	m90e26_frame[1] = (*m90e26_SerialRead)(m90e26_serial_port_num);
-	m90e26_frame[2] = (*m90e26_SerialRead)(m90e26_serial_port_num);
-	wdt_disable();
+	//wdt_int_enable(TIMEOUT_READ_WDTO);
+	for (unsigned char i = 0; i < 3; i++) {
+		do {
+			rx_data = (*m90e26_SerialRead)(m90e26_serial_port);
+		} while(rx_data < 0);
+		m90e26_frame[i] = (unsigned char)rx_data;
+	}
+	
+	//wdt_disable();
 
 	/*
 	if ((TIMEOUT_IOREG & _BV(TIMEOUT_FLAG))!=0)
@@ -74,7 +87,7 @@ void m90e26_send_packet(unsigned char bufferSize)
 {
   
   for (unsigned char i = 0; i < bufferSize; i++)
-    (*m90e26_SerialWrite)(m90e26_serial_port_num, m90e26_frame[i]);
+    (*m90e26_SerialWrite)(m90e26_frame[i], m90e26_serial_port);
 
 }
 

@@ -51,21 +51,6 @@ typedef struct _DELAY_TABLE {
 	unsigned short tx_delay;
 } DELAY_TABLE;
 
-#if F_CPU == 1000000
-
-// At 1Mhz anything over 4800 is so error ridden it will not work
-static const DELAY_TABLE table[] PROGMEM =
-{
-	//  baud    rxcenter    rxintra    rxstop  tx
-	{ 4800,     14,        28,       27,    27,    },
-	{ 2400,     28,        56,       56,    56,    },
-	{ 1200,     56,        118,      118,   118,   },
-	{ 300,      224,       475,      475,   475,   },
-};
-
-const int XMIT_START_ADJUSTMENT = 3;
-
-#elif F_CPU == 8000000
 
 static const DELAY_TABLE table[] PROGMEM =
 {
@@ -87,7 +72,6 @@ static const DELAY_TABLE table[] PROGMEM =
 
 const int XMIT_START_ADJUSTMENT = 4;
 
-#endif
 
 
 inline void tunedDelay(uint16_t delay) {
@@ -103,38 +87,38 @@ inline void tunedDelay(uint16_t delay) {
 	);
 }
 
-void handler(char port_num){
+void handler(Uart *p){
 	pWidth=interruptTime;
 	PORTB^=1;
 	uint8_t d = 0;
 	// If RX line is high, then we don't see any start bit
 	// so interrupt is probably not for us
-	if ( !(*serials[port_num]._PIN&(1<<serials[port_num]._RX_PIN_NUM)) ) {
+	if ( !(*p->_PIN&(1<<p->_RX_PIN_NUM)) ) {
 		// Wait approximately 1/2 of a bit width to "center" the sample
-		tunedDelay(serials[port_num]._rx_delay_centering);
+		tunedDelay(p->_rx_delay_centering);
 
 		// Read each of the 8 bits
 		for (uint8_t i = 0x1; i; i <<= 1) {
-			tunedDelay(serials[port_num]._rx_delay_intrabit-1);
+			tunedDelay(p->_rx_delay_intrabit-1);
 			uint8_t noti = ~i;
-			if ((*serials[port_num]._PIN&(1<<serials[port_num]._RX_PIN_NUM)))
+			if ((*p->_PIN&(1<<p->_RX_PIN_NUM)))
 			d |= i;
 			else // else clause added to ensure function timing is ~balanced
 			d &= noti;
 		};
-		tunedDelay(serials[port_num]._rx_delay_stopbit-5);
+		tunedDelay(p->_rx_delay_stopbit-5);
 		
-		if(!(*serials[port_num]._PIN&(1<<serials[port_num]._RX_PIN_NUM))){ //If no stop bit - run timer and measure calibration  impulse width.
+		if(!(*p->_PIN&(1<<p->_RX_PIN_NUM))){ //If no stop bit - run timer and measure calibration  impulse width.
 			FLAG=1;	
 		};
 		
 		// if buffer full, set the overflow flag and return
-		if (((serials[port_num]._receive_buffer_tail + 1) & _SS_RX_BUFF_MASK) != serials[port_num]._receive_buffer_head) {  // circular buffer
+		if (((p->_receive_buffer_tail + 1) & _SS_RX_BUFF_MASK) != p->_receive_buffer_head) {  // circular buffer
 			// save new data in buffer: tail points to where byte goes
-			serials[port_num]._receive_buffer[serials[port_num]._receive_buffer_tail] = d; // save new byte
-			serials[port_num]._receive_buffer_tail = (serials[port_num]._receive_buffer_tail + 1) & _SS_RX_BUFF_MASK;  // circular buffer
+			p->_receive_buffer[p->_receive_buffer_tail] = d; // save new byte
+			p->_receive_buffer_tail = (p->_receive_buffer_tail + 1) & _SS_RX_BUFF_MASK;  // circular buffer
 			} else {
-			serials[port_num]._buffer_overflow = true;
+			p->_buffer_overflow = true;
 		}
 	}
 }
@@ -143,7 +127,7 @@ void handler(char port_num){
 ISR(PCINT0_vect) {
 	interruptTime = TCNT1;
 	if(FLAG){														 //if flag of measurement present - wait for front to end of measuerment. 
-		if(*serials[SOFT_UART0]._PIN&(1<<serials[SOFT_UART0]._RX_PIN_NUM)){
+		if(*serial_0->_PIN&(1<<serial_0->_RX_PIN_NUM)){
 			FLAG=0;
 			if(!calibTimeReading){
 				PORTB^=1;
@@ -154,40 +138,39 @@ ISR(PCINT0_vect) {
 		}
 	}
 	
-	if(!(*serials[SOFT_UART0]._PIN&(1<<serials[SOFT_UART0]._RX_PIN_NUM))){ 
-		handler(SOFT_UART0);
+	if(!(*serial_0->_PIN&(1<<serial_0->_RX_PIN_NUM))){ 
+		handler(serial_0);
 	}
-	if(!(*serials[SOFT_UART1]._PIN&(1<<serials[SOFT_UART1]._RX_PIN_NUM))){												 //If low level on UART RX channel detected - call handler function with uart port as argument.
-		handler(SOFT_UART1);
+	if(!(*serial_1->_PIN&(1<<serial_1->_RX_PIN_NUM))){												 //If low level on UART RX channel detected - call handler function with uart port as argument.
+		handler(serial_1);
 	}
 	
 }
 
 
 
-void softSerialBegin(char port_num, long speed, char *ddr, char *port, 
-					 char *pin, char rx_pin, char tx_pin) {
+void softSerialBegin(Uart *p) {
 	
 	unsigned i;
-	serials[port_num]._receive_buffer_head = serials[port_num]._receive_buffer_tail = 0;
-	serials[port_num]._buffer_overflow = false;
-	*serials[port_num]._DDR |= (1<<serials[port_num]._TX_PIN_NUM); // set TX for output
-	*serials[port_num]._DDR &= ~(1<<serials[port_num]._RX_PIN_NUM); // set RX for input
-	*serials[port_num]._PORT |= (1<<serials[port_num]._RX_PIN_NUM)|(1<<serials[port_num]._TX_PIN_NUM); // assumes no inverse logic
+	p->_receive_buffer_head = p->_receive_buffer_tail = 0;
+	p->_buffer_overflow = false;
+	*p->_DDR |= (1<<p->_TX_PIN_NUM); // set TX for output
+	*p->_DDR &= ~(1<<p->_RX_PIN_NUM); // set RX for input
+	*p->_PORT |= (1<<p->_RX_PIN_NUM)|(1<<p->_TX_PIN_NUM); // assumes no inverse logic
 	
 
 	for (i = 0; i < sizeof(table) / sizeof(table[0]); ++i) {
 		
 		long baud = pgm_read_dword(&table[i].baud);
-		if (baud == serials[port_num]._SPEED) {
-			serials[port_num]._rx_delay_centering = pgm_read_word(&table[i].rx_delay_centering);
-			serials[port_num]._rx_delay_intrabit = pgm_read_word(&table[i].rx_delay_intrabit);
-			serials[port_num]._rx_delay_stopbit = pgm_read_word(&table[i].rx_delay_stopbit);
-			serials[port_num]._tx_delay = pgm_read_word(&table[i].tx_delay);
+		if (baud == p->_SPEED) {
+			p->_rx_delay_centering = pgm_read_word(&table[i].rx_delay_centering);
+			p->_rx_delay_intrabit = pgm_read_word(&table[i].rx_delay_intrabit);
+			p->_rx_delay_stopbit = pgm_read_word(&table[i].rx_delay_stopbit);
+			p->_tx_delay = pgm_read_word(&table[i].tx_delay);
 			// Set up RX interrupts, but only if we have a valid RX baud rate
 			GIMSK |= (1<<PCIE0);
-			PCMSK0 |= (1<<serials[port_num]._RX_PIN_NUM);
-			tunedDelay(serials[port_num]._tx_delay);
+			PCMSK0 |= (1<<p->_RX_PIN_NUM);
+			tunedDelay(p->_tx_delay);
 			
 			sei();
 			
@@ -199,34 +182,34 @@ void softSerialBegin(char port_num, long speed, char *ddr, char *port,
 	// Indicate an error
 }
 
-void softSerialEnd(char port_num) {
-	PCMSK0 &= ~(1<<serials[port_num]._RX_PIN_NUM);
+void softSerialEnd() {
+	PCMSK0 = 0;
 }
 
 // Read data from buffer
-int softSerialRead(char port_num) {
+int softSerialRead(Uart *p) {
 	// Empty buffer?
-	if (serials[port_num]._receive_buffer_head == serials[port_num]._receive_buffer_tail)
+	if (p->_receive_buffer_head == p->_receive_buffer_tail)
 		return -1;
 
 	// Read from "head"
-	uint8_t d = serials[port_num]._receive_buffer[serials[port_num]._receive_buffer_head]; // grab next byte
-	serials[port_num]._receive_buffer_head = (serials[port_num]._receive_buffer_head + 1) & _SS_RX_BUFF_MASK; // circular buffer
+	uint8_t d = p->_receive_buffer[p->_receive_buffer_head]; // grab next byte
+	p->_receive_buffer_head = (p->_receive_buffer_head + 1) & _SS_RX_BUFF_MASK; // circular buffer
 	return d;
 }
 
-int softSerialAvailable(char port_num) {
-	return (serials[port_num]._receive_buffer_tail + _SS_MAX_RX_BUFF - serials[port_num]._receive_buffer_head) & _SS_RX_BUFF_MASK; // circular buffer
+int softSerialAvailable(Uart *p) {
+	return (p->_receive_buffer_tail + _SS_MAX_RX_BUFF - p->_receive_buffer_head) & _SS_RX_BUFF_MASK; // circular buffer
 }
 
-bool softSerialOverflow(char port_num) {
-	bool ret = serials[port_num]._buffer_overflow;
-	serials[port_num]._buffer_overflow = false;
+bool softSerialOverflow(Uart *p) {
+	bool ret = p->_buffer_overflow;
+	p->_buffer_overflow = false;
 	return ret;
 }
 
-size_t softSerialWrite(char port_num, uint8_t b) {
-	if (serials[port_num]._tx_delay == 0) {
+size_t softSerialWrite(uint8_t b, Uart *p) {
+	if (p->_tx_delay == 0) {
 		//setWriteError();
 		return 0;
 	}
@@ -235,43 +218,43 @@ size_t softSerialWrite(char port_num, uint8_t b) {
 	cli();	// turn off interrupts for a clean txmit
 
 	// Write the start bit
-	*serials[port_num]._PORT &= ~(1<<serials[port_num]._TX_PIN_NUM); // tx pin low
-	tunedDelay(serials[port_num]._tx_delay + XMIT_START_ADJUSTMENT);
+	*p->_PORT &= ~(1<<p->_TX_PIN_NUM); // tx pin low
+	tunedDelay(p->_tx_delay + XMIT_START_ADJUSTMENT);
 
 	// Write each of the 8 bits
 	for (byte mask = 0x01; mask; mask <<= 1) {
 		if (b & mask) // choose bit
-			*serials[port_num]._PORT |= (1<<serials[port_num]._TX_PIN_NUM); // tx pin high, send 1
+			*p->_PORT |= (1<<p->_TX_PIN_NUM); // tx pin high, send 1
 		else
-			*serials[port_num]._PORT &= ~(1<<serials[port_num]._TX_PIN_NUM); // tx pin low, send 0
+			*p->_PORT &= ~(1<<p->_TX_PIN_NUM); // tx pin low, send 0
 
-		tunedDelay(serials[port_num]._tx_delay);
+		tunedDelay(p->_tx_delay);
 	}
-	*serials[port_num]._PORT |= (1<<serials[port_num]._TX_PIN_NUM); // tx pin high, restore pin to natural state
+	*p->_PORT |= (1<<p->_TX_PIN_NUM); // tx pin high, restore pin to natural state
 
 	//sei();
 	SREG = oldSREG; // turn interrupts back on
-	tunedDelay(serials[port_num]._tx_delay);
+	tunedDelay(p->_tx_delay);
 
 	return 1;
 }
 
-void softSerialFlush(char port_num) {
+void softSerialFlush(Uart *p) {
 	uint8_t oldSREG = SREG; // store interrupt flag
 	cli();
-	serials[port_num]._receive_buffer_head = serials[port_num]._receive_buffer_tail = 0;
+	p->_receive_buffer_head = p->_receive_buffer_tail = 0;
 	SREG = oldSREG; // restore interrupt flag
 	//sei();
 }
 
 
-int softSerialPeek(char port_num) {
+int softSerialPeek(Uart *p) {
 	// Empty buffer?
-	if (serials[port_num]._receive_buffer_head == serials[port_num]._receive_buffer_tail)
+	if (p->_receive_buffer_head == p->_receive_buffer_tail)
 		return -1;
 
 	// Read from "head"
-	return serials[port_num]._receive_buffer[serials[port_num]._receive_buffer_head];
+	return p->_receive_buffer[p->_receive_buffer_head];
 }
 
 

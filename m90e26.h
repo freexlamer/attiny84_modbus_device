@@ -4,7 +4,9 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <avr/interrupt.h>
-#include <avr/wdt.h>  
+#include <avr/wdt.h>
+
+#include "SoftwareSerial.h"
 
 #define M90E26_START_MARKER 0xFE
 
@@ -22,10 +24,10 @@ TIMEOUT_IOREG &= ~(_BV(TIMEOUT_FLAG));
 
 #define check_timeout_flag() ((TIMEOUT_IOREG & _BV(TIMEOUT_FLAG))==0)
 
-char m90e26_serial_port_num;
+Uart *m90e26_serial_port;
 
-size_t (*m90e26_SerialWrite)(char, uint8_t);
-int (*m90e26_SerialRead)(char);
+size_t (*m90e26_SerialWrite)(uint8_t b, Uart *p);
+int (*m90e26_SerialRead)(Uart *p);
 
 bool m90e26_read_reg(unsigned char address, unsigned int *data);
 bool m90e26_write_reg(unsigned char address, unsigned int data);

@@ -159,6 +159,9 @@ void relay_init(){
     DDRA |= (1 << RELAY_R1 | 1 << RELAY_R2);
 }
 
+//Uart serial0;
+//Uart serial1;
+
 
 int main(void)
 {
@@ -194,31 +197,40 @@ int main(void)
         relay_init();
 
         // UARTs initialization
-        softSerialBegin(SOFT_UART0, 9600, &DDRA, &PORTA, &PINA, PA5, PA6);
-        softSerialBegin(SOFT_UART1, 9600, &DDRA, &PORTA, &PINA, PA0, PA1);
+        //softSerialBegin(SOFT_UART0, 9600, &DDRA, &PORTA, &PINA, PA5, PA6);
+        //softSerialBegin(SOFT_UART1, 9600, &DDRA, &PORTA, &PINA, PA0, PA1);
+
+        Uart serial0 = {9600, &DDRA, &PORTA, &PINA, PA5, PA6};
+        Uart serial1 = {9600, &DDRA, &PORTA, &PINA, PA0, PA1};
+
+        serial_0 = &serial0;
+        serial_1 = &serial1;
+
+        softSerialBegin(serial_0);
+        softSerialBegin(serial_1);
 
         // MODBUS initialization
         slaveID = MODBUS_SELF_ADDRESS;
 
-        modbus_serial_port_num = SOFT_UART0;
+        modbus_serial_port = serial_0;
         modbus_SerialWrite = &softSerialWrite;
         modbus_read_reg = &read_reg;
         modbus_write_reg = &write_reg;
         modbus_led = &led_set;
 
         // M90E26 initialization
-        m90e26_serial_port_num = SOFT_UART1;
+        m90e26_serial_port = serial_1;
         m90e26_SerialWrite = &softSerialWrite;
         m90e26_SerialRead = &softSerialRead;
 
         led_toggle();
-        
+
         /* loop */
         while (1) {
             if (perform_main_loop_exit) 
                 break;
 
-            rx_data = softSerialRead(SOFT_UART0);
+            rx_data = softSerialRead(serial_0);
 
             if (rx_data > -1) {
                 led_toggle();
@@ -233,8 +245,7 @@ int main(void)
             */
         }
 
-        softSerialEnd(SOFT_UART0);
-        softSerialEnd(SOFT_UART1);
+        softSerialEnd();
     }
     
 }
