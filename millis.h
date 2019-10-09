@@ -15,6 +15,8 @@ Based on https://github.com/sourceperl/millis
 	#define TIMER0_PRESCALER	(1<<CS01)|(0<<CS00)
 	#define TIMER0_TOP			(F_CPU/8)/1000
 #elif F_CPU == 8000000
+	// prescale timer0 to 1/64th the clock rate
+	// overflow timer0 every 125 tacts = 1 ms (at 8MHz)
 	#define TIMER0_PRESCALER	(1<<CS01)|(1<<CS00)
 	#define TIMER0_TOP			(F_CPU/64)/1000
 #else

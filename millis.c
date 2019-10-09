@@ -13,10 +13,7 @@ ISR(TIM0_OVF_vect) {
 
 void millis_setup() {
   /* interrup setup */
-  // prescale timer0 to 1/64th the clock rate
-  // overflow timer0 every 125 tacts = 1 ms (at 8MHz)
-  //OCR0A = 125;
-  OCR0A = 125;
+  OCR0A = TIMER0_TOP;
   // (F_CPU/TIMER_PRESCALE)/1000
 
   TCCR0A = (1<<WGM01)|(1<<WGM00);
