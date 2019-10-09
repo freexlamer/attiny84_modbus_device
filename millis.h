@@ -6,9 +6,10 @@ Based on https://github.com/sourceperl/millis
 #ifndef MILLIS_H
 #define MILLIS_H
 
-#include <avr/io.h>
 #include <inttypes.h>
+#include <avr/io.h>
 #include <avr/interrupt.h>
+#include <util/atomic.h>
 
 #if F_CPU == 1000000
 	#define TIMER0_PRESCALER	(1<<CS01)|(0<<CS00)

@@ -34,13 +34,10 @@ void millis_end() {
 }
 
 uint64_t millis() {
-  uint8_t sreg;
   uint64_t m;
-  sreg = SREG;
 
-  cli();
-  m = _millis;
-  
-  SREG = sreg;
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    m = _millis;
+  }
   return m;
 }
