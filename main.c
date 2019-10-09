@@ -94,8 +94,12 @@ bool read_reg(unsigned int address, unsigned int *data){
     else if ((address>=DS18B20_START_ADDRESS) && (address<=DS18B20_END_ADDRESS)) {
         return get_temperature_sensor(address, data);
     }
-    else if ((address>=ERRORS_START_ADDRESS) && (address<=ERRORS_END_ADDRESS)) {
-        *data = 4;
+    else if (address==ERRORS_M90E26_READ) {
+        *data = m90e26_read_errors;
+        return true;
+    }
+    else if (address==ERRORS_M90E26_WRITE) {
+        *data = m90e26_write_errors;
         return true;
     }
     else if (address == DEBUG_REGS_START_ADDRESS) {
@@ -232,6 +236,7 @@ int main(void)
         m90e26_serial_port = serial_1;
         m90e26_SerialWrite = &softSerialWrite;
         m90e26_SerialRead = &softSerialRead;
+        m90e26_init();
 
         led_toggle();
 

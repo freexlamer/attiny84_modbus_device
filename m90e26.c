@@ -13,6 +13,11 @@ unsigned char m90e26_calculate_chksum(unsigned char buffer_start, unsigned char 
 void m90e26_send_packet(unsigned char bufferSize);
 void wdt_int_enable(unsigned char timeout);
 
+void m90e26_init() {
+    m90e26_read_errors = 0;
+    m90e26_write_errors = 0;
+}
+
 bool m90e26_write_reg(unsigned char address, unsigned int data) {
 	//int rx_data;
 
@@ -27,13 +32,21 @@ bool m90e26_write_reg(unsigned char address, unsigned int data) {
 	start_time = millis();
 	while (!softSerialAvailable(m90e26_serial_port)) {
 		_delay_ms(ANSWER_DELAY_MS);
-		if ((millis() - start_time) > TIMEOUT_READ_WRITE_MS)
+		if ((millis() - start_time) > TIMEOUT_READ_WRITE_MS) {
+			m90e26_write_errors++;
 			return false;
+		}
 	}
 
 	unsigned char ack = (unsigned char)(*m90e26_SerialRead)(m90e26_serial_port);
+	if (m90e26_frame[4] == ack) {
+		return true;
+	}
+	else {
+		m90e26_write_errors++;
+		return false;
+	}
 
-	return (m90e26_frame[4] == ack);
 }
 
 bool m90e26_read_reg(unsigned char address, unsigned int *data) {
@@ -51,8 +64,10 @@ bool m90e26_read_reg(unsigned char address, unsigned int *data) {
 		start_time = millis();
 		while (!softSerialAvailable(m90e26_serial_port)) {
 			_delay_ms(ANSWER_DELAY_MS);
-			if (millis() - start_time > TIMEOUT_READ_WRITE_MS)
+			if (millis() - start_time > TIMEOUT_READ_WRITE_MS) {
+				m90e26_read_errors++;
 				return false;
+			}
 		}
 
 		m90e26_frame[i] = (unsigned char)(*m90e26_SerialRead)(m90e26_serial_port);
@@ -61,11 +76,13 @@ bool m90e26_read_reg(unsigned char address, unsigned int *data) {
 
 
 	if (m90e26_frame[2] == m90e26_calculate_chksum(0,2)) {
-		*data = m90e26_frame[1] | m90e26_frame[0] << 8;
+		*data = m90e26_frame[1] | (m90e26_frame[0] << 8);
 		return true;
 	}
-	else
+	else {
+		m90e26_read_errors++;
 		return false;
+	}
 	
 
 }
@@ -80,8 +97,9 @@ unsigned char m90e26_calculate_chksum(unsigned char buffer_start, unsigned char 
 
 void m90e26_send_packet(unsigned char bufferSize)
 {
-  
-  for (unsigned char i = 0; i < bufferSize; i++)
+
+  for (unsigned char i = 0; i < bufferSize; i++) {
     (*m90e26_SerialWrite)(m90e26_frame[i], m90e26_serial_port);
+  }
 
 }

@@ -19,9 +19,13 @@
 
 Uart *m90e26_serial_port;
 
+unsigned int m90e26_read_errors;
+unsigned int m90e26_write_errors;
+
 size_t (*m90e26_SerialWrite)(uint8_t b, Uart *p);
 int (*m90e26_SerialRead)(Uart *p);
 
+void m90e26_init();
 bool m90e26_read_reg(unsigned char address, unsigned int *data);
 bool m90e26_write_reg(unsigned char address, unsigned int data);
 
