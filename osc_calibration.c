@@ -2,7 +2,7 @@
 
 
 bool update_osccal_from_eeprom() {
-	uint8_t osccal_new = eeprom_read_byte(OSCCAL_EEADDR);
+	uint8_t osccal_new = eeprom_read_byte((uint8_t*)OSCCAL_EEADDR);
 	uint8_t osccal_old = OSCCAL;
 	uint8_t i;
 
@@ -39,7 +39,7 @@ bool update_osccal_from_eeprom() {
 */
 
 void write_from_osccal_to_eeprom() {
-	eeprom_write_byte(OSCCAL_EEADDR, OSCCAL);
+	eeprom_write_byte((uint8_t*)OSCCAL_EEADDR, OSCCAL);
 }
 
 int perform_calibration() {
@@ -76,8 +76,8 @@ int perform_calibration() {
 	    " ldi r18, %[timer_stop] \n\t"
 	    " out %[tccrb], r18 \n\t"
 
-	    :: [uart_port] "I" (_SFR_IO_ADDR(UART_RX_PORT_REG)),
-	    [uart_pin] "I" (UART_RX_PIN),
+	    :: [uart_port] "I" (_SFR_IO_ADDR(UART0_PORT)),
+	    [uart_pin] "I" (UART0_RX_PIN),
 	    [timer_start] "I" (TIMER_START),
 	    [timer_stop] "I" (TIMER_STOP),
 	    [tccrb] "I" (_SFR_IO_ADDR(TCCR1B))
@@ -98,9 +98,12 @@ int perform_calibration() {
 	    }
 
 	    OSCCAL = osctmp;
-	    (*osc_calibration_SerialWrite)(osc_calibration_serial_port_num, osctmp);
+	    (*osc_calibration_SerialWrite)(osctmp, osc_calibration_serial_port);
 
-	    (*osc_calibration_toggle_led)();
+	    for (i=0; i<5; i++) {
+	    	(*osc_calibration_toggle_led)();
+	    	_delay_ms(150);
+	    }
     }
 
     SREG = sreg;

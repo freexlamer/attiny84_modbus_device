@@ -12,6 +12,7 @@
 #include "m90e26.h"
 #include "one_wire.h"
 #include "osc_calibration.h"
+#include "millis.h"
 
 #define RELAY_R1 PA2
 #define RELAY_R2 PA3
@@ -166,45 +167,54 @@ void relay_init(){
 int main(void)
 {
     uint8_t tmp;
-    int rx_data;
+
     // Ports initialization
     // Status led pin
     STATUS_LED_DDR = (1 << STATUS_LED_PIN);
 
+    // internal chronometer initialization
+    millis_setup();
+
     while(1) {
         perform_main_loop_exit = false;
-
-        /*
-        if (perform_forced_calibration || !update_osccal_from_eeprom()) {
-            osc_calibration_toggle_led = &led_toggle;
-            osc_calibration_serial_port_num = SOFT_UART0;
-            osc_calibration_SerialWrite =  &softSerialWrite;
-            softSerialBegin(SOFT_UART0, 9600, &DDRA, &PORTA, &PINA, PA5, PA6);
-
-            tmp = perform_calibration();
-            perform_forced_calibration = false;
-
-            softSerialWrite(SOFT_UART0, 0xFF);
-            write_from_osccal_to_eeprom();
-
-            softSerialEnd(SOFT_UART0);
-        }
-
-        update_osccal_from_eeprom();
-        */
-        
-        // Relays pins
-        relay_init();
-
-        // UARTs initialization
-        //softSerialBegin(SOFT_UART0, 9600, &DDRA, &PORTA, &PINA, PA5, PA6);
-        //softSerialBegin(SOFT_UART1, 9600, &DDRA, &PORTA, &PINA, PA0, PA1);
 
         Uart serial0 = {9600, &DDRA, &PORTA, &PINA, PA5, PA6};
         Uart serial1 = {9600, &DDRA, &PORTA, &PINA, PA0, PA1};
 
         serial_0 = &serial0;
         serial_1 = &serial1;
+
+        if (perform_forced_calibration || !update_osccal_from_eeprom()) {
+            for (int i=0; i<10; i++) {
+                led_toggle();
+                _delay_ms(100);
+                led_toggle();
+                _delay_ms(250);
+            }
+            osc_calibration_toggle_led = &led_toggle;
+            osc_calibration_serial_port = serial_0;
+            osc_calibration_SerialWrite =  &softSerialWrite;
+            softSerialBegin(serial_0);
+
+            tmp = perform_calibration();
+
+            //softSerialBegin(serial_0);
+            softSerialWrite(0xFF, serial_0);
+            softSerialWrite(tmp, serial_0);
+
+            write_from_osccal_to_eeprom();
+
+            softSerialEnd();
+            perform_forced_calibration = false;
+        }
+
+        // Relays pins
+        relay_init();
+
+        // UARTs initialization
+        //softSerialBegin(SOFT_UART0, 9600, &DDRA, &PORTA, &PINA, PA5, PA6);
+        //softSerialBegin(SOFT_UART1, 9600, &DDRA, &PORTA, &PINA, PA0, PA1);
+       
 
         softSerialBegin(serial_0);
         softSerialBegin(serial_1);
@@ -229,23 +239,28 @@ int main(void)
         while (1) {
             if (perform_main_loop_exit) 
                 break;
-
-            rx_data = softSerialRead(serial_0);
-
-            if (rx_data > -1) {
+          
+            if (softSerialAvailable(serial_0)) {
                 led_toggle();
-                pull_port(rx_data);
+                pull_port(softSerialRead(serial_0));
             }
 
-            /*
-            if (softSerialAvailable(SOFT_UART0)) {
-                led_toggle();
-                pull_port(softSerialRead(SOFT_UART0));
+            if (FLAG) {
+                perform_main_loop_exit = true;
+                perform_forced_calibration = true;
+                FLAG = 0;
             }
-            */
+
         }
 
+        for (int i=0; i<10; i++) {
+            led_toggle();
+            _delay_ms(150);
+        }
+        
+
         softSerialEnd();
+        millis_end();
     }
     
 }

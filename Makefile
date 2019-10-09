@@ -6,7 +6,7 @@
 DEVICE      = attiny84
 CLOCK      = 8000000
 PROGRAMMER = -c usbtiny
-OBJECTS    = main.o tiny_modbus_rtu_slave.o m90e26.o one_wire.o osc_calibration.o SoftwareSerial.o
+OBJECTS    = main.o tiny_modbus_rtu_slave.o m90e26.o one_wire.o osc_calibration.o SoftwareSerial.o millis.o
 OBJECTS_PREPARE = osc_calibration.o prepare.o
 
 # for ATTiny85 - unset CKDIV8

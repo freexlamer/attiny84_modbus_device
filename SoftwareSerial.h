@@ -34,40 +34,8 @@ This code configures:
 //
 // Defines
 //
-#define true 1
-#define false 0
 #define HIGH 1
 #define LOW 0
-
-
-
-
-typedef volatile struct{
-	volatile long _SPEED;
-	char* _DDR;
-	char* _PORT;
-	char* _PIN;
-	char _RX_PIN_NUM;
-	char _TX_PIN_NUM;
-	char _receive_buffer[16];
-	uint8_t _receive_buffer_tail;
-	uint8_t _receive_buffer_head;
-	uint16_t _buffer_overflow;
-    uint16_t _rx_delay_intrabit;
-	uint16_t _rx_delay_centering;
-	uint16_t _rx_delay_stopbit;
-	uint16_t _tx_delay;
-
-}Uart;
-
-
-
-
-//
-// Types
-//
-typedef uint8_t byte;
-
 
 //
 // Definitions
@@ -78,11 +46,40 @@ typedef uint8_t byte;
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #endif
 
+
+typedef volatile struct{
+	volatile long _SPEED;
+	char* _DDR;
+	char* _PORT;
+	char* _PIN;
+	char _RX_PIN_NUM;
+	char _TX_PIN_NUM;
+	char _receive_buffer[_SS_MAX_RX_BUFF];
+	uint8_t _receive_buffer_tail;
+	uint8_t _receive_buffer_head;
+	uint16_t _buffer_overflow;
+    uint16_t _rx_delay_intrabit;
+	uint16_t _rx_delay_centering;
+	uint16_t _rx_delay_stopbit;
+	uint16_t _tx_delay;
+
+}Uart;
+
+//
+// Types
+//
+typedef uint8_t byte;
+
+// public variables
+
+Uart *serial_0;
+Uart *serial_1;
+uint8_t FLAG;
+
+
 //
 // public methods
 //
-Uart *serial_0;
-Uart *serial_1;
 
 void softSerialBegin(Uart *p);
 void softSerialEnd();
