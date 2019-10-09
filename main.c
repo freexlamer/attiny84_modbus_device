@@ -102,6 +102,14 @@ bool read_reg(unsigned int address, unsigned int *data){
         *data = m90e26_write_errors;
         return true;
     }
+    else if (address==ERRORS_MODBUS_CRC) {
+        *data = modbus_crc_errors;
+        return true;
+    }
+    else if (address==ERRORS_MODBUS_ALL) {
+        *data = modbus_error_count;
+        return true;
+    }
     else if (address == DEBUG_REGS_START_ADDRESS) {
         *data = OSCCAL;
     }
@@ -231,6 +239,7 @@ int main(void)
         modbus_read_reg = &read_reg;
         modbus_write_reg = &write_reg;
         modbus_led = &led_set;
+        modbus_init();
 
         // M90E26 initialization
         m90e26_serial_port = serial_1;

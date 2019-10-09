@@ -14,7 +14,6 @@ The crc calculation is based on the work published
 #include "tiny_modbus_rtu_slave.h"
 
 unsigned char frame[BUFFER_SIZE+2];
-unsigned char errorCount;
 unsigned char slaveID;
 unsigned char function;
 bool broadcastFlag;
@@ -27,6 +26,11 @@ void exceptionResponse(unsigned char exception);
 unsigned int calculateCRC(unsigned char bufferSize);
 void sendPacket(unsigned char bufferSize);
 bool testAddress(unsigned int address);
+
+void modbus_init() {
+	modbus_error_count = 0;
+	modbus_crc_errors = 0;
+}
 
 unsigned char pull_port(int c){
 
@@ -45,7 +49,7 @@ unsigned char pull_port(int c){
 	if (overflow) {
 		buffer = 0;
 		overflow = false;
-    	return errorCount++;
+		return modbus_error_count++;
 	}
 
 	// The minimum request packet is 8 bytes for function 3 & 16
@@ -63,7 +67,7 @@ unsigned char pull_port(int c){
 			// костыль!
 			if ((frame[1] != MODBUS_FUNCTION_READ_AO) && (frame[1] != MODBUS_FUNCTION_WRITE_AO)) {
 				exceptionResponse(MODBUS_ERROR_ILLEGAL_FUNCTION);
-				return errorCount;
+				return modbus_error_count;
 			}
   			// combine the crc Low & High bytes
   			unsigned int crc = ((frame[buffer - 2] << 8) | frame[buffer - 1]);
@@ -163,7 +167,7 @@ unsigned int calculateCRC(unsigned char bufferSize)
 
 void exceptionResponse(unsigned char exception)
 {
-  errorCount++; // each call to exceptionResponse() will increment the errorCount
+  modbus_error_count++; // each call to exceptionResponse() will increment the modbus_error_count
   if (!broadcastFlag) // don't respond if its a broadcast message
   {
     frame[0] = slaveID;
@@ -176,6 +180,9 @@ void exceptionResponse(unsigned char exception)
     sendPacket(5); 
   }
   buffer = 0;
+
+  if (exception == MODBUS_ERROR_CRC)
+    modbus_crc_errors++;
 }
 
 void sendPacket(unsigned char bufferSize)

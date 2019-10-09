@@ -35,29 +35,37 @@ The crc calculation is based on the work published
 #define MODBUS_FUNCTION_WRITE_AO 0x06
 #define MODBUS_FUNCTION_WRITE_AO_RESPONSE_SIZE 8
 
-#define M90E26_START_ADDRESS 0x0000
-#define M90E26_END_ADDRESS 0x006F
-#define RELAY_REG_START_ADDRESS 0x0080
-#define RELAY_REG_END_ADDRESS 0x0081
-#define DS18B20_START_ADDRESS 0x0084
-#define DS18B20_END_ADDRESS 0x0085
-#define ERRORS_START_ADDRESS 0x0088
-#define ERRORS_M90E26_READ ERRORS_START_ADDRESS
-#define ERRORS_M90E26_WRITE ERRORS_START_ADDRESS+1
-#define ERRORS_END_ADDRESS 0x0089
+#define M90E26_START_ADDRESS 	0x0000
+#define M90E26_END_ADDRESS 		0x006F
 
-#define DEBUG_REGS_START_ADDRESS 0x0090
-#define DEBUG_REGS_END_ADDRESS 0x00A0
+#define RELAY_REG_START_ADDRESS 0x0080
+#define RELAY_REG_END_ADDRESS 	0x0081
+
+#define DS18B20_START_ADDRESS 	0x0084
+#define DS18B20_END_ADDRESS 	0x0085
+
+#define ERRORS_START_ADDRESS 	0x0088
+#define ERRORS_M90E26_READ 		ERRORS_START_ADDRESS
+#define ERRORS_M90E26_WRITE 	ERRORS_START_ADDRESS+1
+#define ERRORS_MODBUS_ALL 		ERRORS_START_ADDRESS+2
+#define ERRORS_MODBUS_CRC 		ERRORS_START_ADDRESS+3
+#define ERRORS_END_ADDRESS 		0x0091
+
+#define DEBUG_REGS_START_ADDRESS 	0x0090
+#define DEBUG_REGS_END_ADDRESS 		0x00A0
 
 
 unsigned char slaveID;
 Uart *modbus_serial_port;
+unsigned int modbus_crc_errors;
+unsigned char modbus_error_count;
 
 size_t (*modbus_SerialWrite)(uint8_t b, Uart *p);
 bool (*modbus_read_reg)(unsigned int address, unsigned int *data);
 bool (*modbus_write_reg)(unsigned int address, unsigned int data);
 void (*modbus_led)(bool);
 
+void modbus_init();
 unsigned char pull_port(int c);
 
 #endif //TINY_MODBUS_RTU_SLAVE_H
