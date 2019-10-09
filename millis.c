@@ -17,8 +17,10 @@ void millis_setup() {
   // overflow timer0 every 125 tacts = 1 ms (at 8MHz)
   //OCR0A = 125;
   OCR0A = 125;
+  // (F_CPU/TIMER_PRESCALE)/1000
+
   TCCR0A = (1<<WGM01)|(1<<WGM00);
-  TCCR0B = (1<<CS01)|(1<<CS00)|(1<<WGM02);
+  TCCR0B = TIMER0_PRESCALER|(1<<WGM02);
   // enable timer overflow interrupt
   TIMSK0  |= 1<<TOIE0;
 }

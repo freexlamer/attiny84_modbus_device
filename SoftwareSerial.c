@@ -52,6 +52,22 @@ typedef struct _DELAY_TABLE {
 } DELAY_TABLE;
 
 
+#if F_CPU == 1000000
+
+// At 1Mhz anything over 4800 is so error ridden it will not work
+static const DELAY_TABLE table[] PROGMEM =
+{
+	//  baud    rxcenter    rxintra    rxstop  tx
+	{ 4800,     14,        28,       27,    27,    },
+	{ 2400,     28,        56,       56,    56,    },
+	{ 1200,     56,        118,      118,   118,   },
+	{ 300,      224,       475,      475,   475,   },
+};
+
+const int XMIT_START_ADJUSTMENT = 3;
+
+#elif F_CPU == 8000000
+
 static const DELAY_TABLE table[] PROGMEM =
 {
 	//  baud    rxcenter    rxintra    rxstop  tx
@@ -71,6 +87,30 @@ static const DELAY_TABLE table[] PROGMEM =
 };
 
 const int XMIT_START_ADJUSTMENT = 4;
+
+#elif F_CPU == 16000000
+
+static const DELAY_TABLE PROGMEM table[] =
+{
+	//  baud    rxcenter   rxintra    rxstop    tx
+	{ 115200,   1,         17,        17,       12,    }, // 117647 off by 2.12%, causes problems
+	{ 57600,    10,        37,        37,       33,    }, // 57971 off by 0.644%, causes problems
+	{ 38400,    25,        57,        57,       54,    },
+	{ 31250,    31,        70,        70,       68,    },
+	{ 28800,    34,        77,        77,       74,    },
+	{ 19200,    54,        117,       117,      114,   },
+	{ 14400,    74,        156,       156,      153,   },
+	{ 9600,     114,       236,       236,      233,   },
+	{ 4800,     233,       474,       474,      471,   },
+	{ 2400,     471,       950,       950,      947,   },
+	{ 1200,     947,       1902,      1902,     1899,  },
+	{ 600,      1902,      3804,      3804,     3800,  },
+	{ 300,      3804,      7617,      7617,     7614,  },
+};
+
+const int XMIT_START_ADJUSTMENT = 5;
+
+#endif
 
 
 
@@ -109,7 +149,8 @@ void handler(Uart *p){
 		tunedDelay(p->_rx_delay_stopbit-5);
 		
 		if(!(*p->_PIN&(1<<p->_RX_PIN_NUM))){ //If no stop bit - run timer and measure calibration  impulse width.
-			FLAG=1;	
+			if (p==serial_0)
+				FLAG=1;
 		};
 		
 		// if buffer full, set the overflow flag and return

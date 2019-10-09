@@ -235,6 +235,8 @@ int main(void)
 
         led_toggle();
 
+        sei();
+
         /* loop */
         while (1) {
             if (perform_main_loop_exit) 

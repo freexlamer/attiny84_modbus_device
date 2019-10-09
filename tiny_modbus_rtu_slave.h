@@ -10,6 +10,8 @@ The crc calculation is based on the work published
 
 // (C) freexlamer@github.com
 
+#ifndef TINY_MODBUS_RTU_SLAVE_H
+#define TINY_MODBUS_RTU_SLAVE_H
 
 #include <stdbool.h>
 #include <inttypes.h>
@@ -56,3 +58,4 @@ void (*modbus_led)(bool);
 
 unsigned char pull_port(int c);
 
+#endif //TINY_MODBUS_RTU_SLAVE_H

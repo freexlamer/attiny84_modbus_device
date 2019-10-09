@@ -1,10 +1,12 @@
 // (C) freexlamer@github.com
 
+#ifndef M90E26_H
+#define M90E26_H
+
 #include <stdbool.h>
 #include <inttypes.h>
 #include <stddef.h>
 #include <avr/interrupt.h>
-#include <avr/wdt.h>
 #include <util/delay.h>
 
 #include "SoftwareSerial.h"
@@ -22,3 +24,5 @@ int (*m90e26_SerialRead)(Uart *p);
 
 bool m90e26_read_reg(unsigned char address, unsigned int *data);
 bool m90e26_write_reg(unsigned char address, unsigned int data);
+
+#endif //M90E26_H
