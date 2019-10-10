@@ -3,7 +3,7 @@
 # Based on https://github.com/electronut/tinyDriverP
 # electronut.in
 
-DEVICE      = attiny84
+DEVICE      = attiny84a
 CLOCK      = 8000000
 PROGRAMMER = -c usbtiny
 OBJECTS    = main.o tiny_modbus_rtu_slave.o m90e26.o one_wire.o osc_calibration.o SoftwareSerial.o millis.o
