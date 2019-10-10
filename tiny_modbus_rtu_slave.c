@@ -14,7 +14,6 @@ The crc calculation is based on the work published
 #include "tiny_modbus_rtu_slave.h"
 
 unsigned char frame[BUFFER_SIZE+2];
-unsigned char errorCount;
 unsigned char slaveID;
 unsigned char function;
 bool broadcastFlag;
@@ -28,20 +27,29 @@ unsigned int calculateCRC(unsigned char bufferSize);
 void sendPacket(unsigned char bufferSize);
 bool testAddress(unsigned int address);
 
-unsigned char pull_port(unsigned char c){
+void modbus_init() {
+	modbus_error_count = 0;
+	modbus_crc_errors = 0;
+}
+
+unsigned char pull_port(int c){
+
+	if (c == -1) {
+		return 0;
+	}
 
 	if (!overflow) {
 		if (buffer == BUFFER_SIZE) {
 			overflow = true;
 		}
-		frame[buffer] = c;
+		frame[buffer] = (unsigned char)c;
 		buffer++;
 	}
 
 	if (overflow) {
 		buffer = 0;
 		overflow = false;
-    	return errorCount++;
+		return modbus_error_count++;
 	}
 
 	// The minimum request packet is 8 bytes for function 3 & 16
@@ -55,18 +63,17 @@ unsigned char pull_port(unsigned char c){
   		
 
   		if (id == slaveID || broadcastFlag) {
-  			
+  			function = frame[1];
 			// костыль!
 			if ((frame[1] != MODBUS_FUNCTION_READ_AO) && (frame[1] != MODBUS_FUNCTION_WRITE_AO)) {
 				exceptionResponse(MODBUS_ERROR_ILLEGAL_FUNCTION);
-				return errorCount;
+				return modbus_error_count;
 			}
   			// combine the crc Low & High bytes
   			unsigned int crc = ((frame[buffer - 2] << 8) | frame[buffer - 1]);
   			
 
   			if (calculateCRC(buffer - 2) == crc) {
-  				(*modbus_led)(true);
   				function = frame[1];
   				unsigned int startingAddress = ((frame[2] << 8) | frame[3]);
   				unsigned int no_of_registers = ((frame[4] << 8) | frame[5]);
@@ -160,7 +167,7 @@ unsigned int calculateCRC(unsigned char bufferSize)
 
 void exceptionResponse(unsigned char exception)
 {
-  errorCount++; // each call to exceptionResponse() will increment the errorCount
+  modbus_error_count++; // each call to exceptionResponse() will increment the modbus_error_count
   if (!broadcastFlag) // don't respond if its a broadcast message
   {
     frame[0] = slaveID;
@@ -173,13 +180,16 @@ void exceptionResponse(unsigned char exception)
     sendPacket(5); 
   }
   buffer = 0;
+
+  if (exception == MODBUS_ERROR_CRC)
+    modbus_crc_errors++;
 }
 
 void sendPacket(unsigned char bufferSize)
 {
   
   for (unsigned char i = 0; i < bufferSize; i++)
-    (*modbus_uart_putc)(frame[i]);
+    (*modbus_SerialWrite)(frame[i], modbus_serial_port);
  
   // allow a frame delay to indicate end of transmission
   _delay_ms(3);
@@ -198,6 +208,9 @@ bool testAddress(unsigned int address) {
 		return true;
 	}
 	else if ((address>=ERRORS_START_ADDRESS) && (address<=ERRORS_END_ADDRESS)) {
+		return true;
+	}
+	else if ((address>=DEBUG_REGS_START_ADDRESS) && (address<=DEBUG_REGS_END_ADDRESS)) {
 		return true;
 	}
 	else 

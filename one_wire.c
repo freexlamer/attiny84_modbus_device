@@ -2,19 +2,21 @@
 #include "one_wire.h"
 
 // Инициализация DS18B20
-unsigned char DS18B20_init(void)
+bool DS18B20_init(void)
 {
 	unsigned char OK_Flag;
 
-	DS18B20_DDR |= (1 << DS18B20_DQ); // PC0 - выход
-	DS18B20_PORT &= ~(1 << DS18B20_DQ); // Устанавливаем низкий уровень
+	DS18B20_DDR |= (1 << DS18B20_DQ); // PIN mode output
+	DS18B20_PORT &= ~(1 << DS18B20_DQ); // Set LOW
 	_delay_us(490);
-	DS18B20_DDR &= ~(1 << DS18B20_DQ); // PC0 - вход
+	DS18B20_DDR &= ~(1 << DS18B20_DQ); // PIN mode input
 	_delay_us(68);
-	OK_Flag = (DS18B20_PIN & (1 << DS18B20_DQ)); // Ловим импульс присутствия датчика
-	// если OK_Flag = 0 датчик подключен, OK_Flag = 1 датчик не подключен
+	OK_Flag = (DS18B20_PIN & (1 << DS18B20_DQ)); // read presence pulse
 	_delay_us(422);
-	return OK_Flag;
+
+	// OK_Flag = 0 sensor connected
+	// OK_Flag = 1 sensor disconnected
+	return OK_Flag==0;
 }
 
 // Функция чтения байта из DS18B20
@@ -55,7 +57,9 @@ bool DS18B20_get(unsigned int *data, unsigned int *cfg) {
 
 	unsigned char data_h, data_l;
 
-	DS18B20_init();
+	if (!DS18B20_init())
+		return false;
+
 	DS18B20_write(0xCC); // Проверка кода датчика
 	DS18B20_write(0x44);     // Запуск температурного преобразования
 	_delay_ms(250);
@@ -72,7 +76,9 @@ bool DS18B20_get(unsigned int *data, unsigned int *cfg) {
 
 	_delay_ms(250);
 
-	*data = data_h << 8 | data_l;
+	// check CRC
+
+	*data = (data_h << 8) | data_l;
 
 	return true;
 

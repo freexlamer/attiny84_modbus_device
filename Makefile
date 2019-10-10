@@ -3,20 +3,20 @@
 # Based on https://github.com/electronut/tinyDriverP
 # electronut.in
 
-DEVICE      = attiny84
-CLOCK      = 1000000
+DEVICE      = attiny84a
+CLOCK      = 8000000
 PROGRAMMER = -c usbtiny
-OBJECTS    = main.o soft_uart.o tiny_modbus_rtu_slave.o m90e26.o one_wire.o
+OBJECTS    = main.o tiny_modbus_rtu_slave.o m90e26.o one_wire.o osc_calibration.o SoftwareSerial.o millis.o
+OBJECTS_PREPARE = osc_calibration.o prepare.o
 
 # for ATTiny85 - unset CKDIV8
-#int 8MHz div8
-#FUSES       = -U lfuse:w:0x62:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
-#ext 8MHz div8
-FUSES       = -U lfuse:w:0x6E:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
-
+#int 8MHz
+FUSES       = -U lfuse:w:0xE2:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
+#ext 8MHz
+FUSES_EXTOSC = -U lfuse:w:0xEE:m -U hfuse:w:0xDF:m -U efuse:w:0xFF:m
 # Tune the lines below only if you know what you are doing:
 
-AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE)
+AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) 
 COMPILE = avr-gcc -std=gnu99 -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
 
 # symbolic targets:
@@ -38,8 +38,17 @@ all:	main.hex
 flash:	all
 	$(AVRDUDE) -U flash:w:main.hex:i
 
+flash_prepare:	prepare.hex
+	$(AVRDUDE) -U flash:w:prepare.hex:i
+
 fuse:
 	$(AVRDUDE) $(FUSES)
+
+fuse_extosc:
+	$(AVRDUDE) $(FUSES_EXTOSC)
+
+read_eeprom:
+	$(AVRDUDE) -U eeprom:r:eeprom.hex:i
 
 # Xcode uses the Makefile targets "", "clean" and "install"
 install: flash fuse
@@ -50,10 +59,14 @@ load: all
 
 clean:
 	rm -f main.hex main.elf $(OBJECTS)
+	rm -f prepare.elf prepare.hex
 
 # file targets:
 main.elf: $(OBJECTS)
 	$(COMPILE) -o main.elf $(OBJECTS)
+
+prepare.elf: $(OBJECTS_PREPARE)
+	$(COMPILE) -o prepare.elf $(OBJECTS_PREPARE)
 
 main.hex: main.elf
 	rm -f main.hex
@@ -61,6 +74,12 @@ main.hex: main.elf
 	avr-size --format=avr --mcu=$(DEVICE) main.elf
 # If you have an EEPROM section, you must also create a hex file for the
 # EEPROM and add it to the "flash" target.
+
+prepare.hex: prepare.elf
+	rm -f prepare.hex
+	avr-objcopy -j .text -j .data -O ihex prepare.elf prepare.hex
+	avr-size --format=avr --mcu=$(DEVICE) prepare.elf
+
 
 # Targets for code debugging and analysis:
 disasm:	main.elf
