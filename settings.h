@@ -1,6 +1,9 @@
 
 #define        F_CPU           (8000000UL) 
 
+#define OSCCAL_CALIBRATION			1
+#define OSCCAL_FORCE_CALIBRATION	1
+
 #define UART0_RX_PIN		PA5
 #define UART0_TX_PIN		PA6
 #define UART0_DDR			DDRA

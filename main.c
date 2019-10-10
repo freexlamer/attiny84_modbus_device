@@ -16,8 +16,13 @@
 
 #define RELAY_R1 PA2
 #define RELAY_R2 PA3
+#define RELAY_R1_PORT PORTA
+#define RELAY_R2_PORT PORTA
+#define RELAY_R1_DDR DDRA
+#define RELAY_R2_DDR DDRA
 #define RELAY_REG_R1 0x0001
 #define RELAY_REG_R2 0x0001
+
 #define STATUS_LED_PIN PB2
 #define STATUS_LED_PORT PORTB
 #define STATUS_LED_DDR DDRB
@@ -34,24 +39,26 @@ bool perform_forced_calibration = false;
 void led_toggle();
 
 bool update_relay_r1(unsigned int data){
+    // update state of Relay 1
     relay_r1_reg = data;
     if ((relay_r1_reg & RELAY_REG_R1)>0) {
-        PORTA |= (1 << RELAY_R1);
+        RELAY_R1_PORT |= (1 << RELAY_R1);
     }
     else {
-        PORTA &= ~(1 << RELAY_R1);
+        RELAY_R1_PORT &= ~(1 << RELAY_R1);
     }
 
     return true;
 }
 
 bool update_relay_r2(unsigned int data){
+    // update state of Relay 2
     relay_r2_reg = data;
     if ((relay_r2_reg & RELAY_REG_R2)>0) {
-        PORTA |= (1 << RELAY_R2);
+        RELAY_R2_PORT |= (1 << RELAY_R2);
     }
     else {
-        PORTA &= ~(1 << RELAY_R2);
+        RELAY_R2_PORT &= ~(1 << RELAY_R2);
     }
     return true;
 }
@@ -69,19 +76,12 @@ bool get_temperature_sensor(unsigned int address, unsigned int *data) {
 }
 
 bool read_reg(unsigned int address, unsigned int *data){
-    //bool status;
+    /*
+        Proxy for read access to devices and data.
+    */
 
     if ((address>=M90E26_START_ADDRESS) && (address<=M90E26_END_ADDRESS)) {
-        // *data = 1;
-        //return true;
-        //return m90e26_read_reg(address, data);
-        if (m90e26_read_reg(address, data)) {
-            return true;
-        }
-        else {
-            led_toggle();
-            return false;
-        }
+        return m90e26_read_reg(address, data);
     } 
     else if (address == RELAY_REG_START_ADDRESS) {
         *data = relay_r1_reg;
@@ -122,8 +122,11 @@ bool read_reg(unsigned int address, unsigned int *data){
 
 
 bool write_reg(unsigned int address, unsigned int data){
+    /*
+        Write for read access to devices and data.
+    */
+
     if ((address>=M90E26_START_ADDRESS) && (address<=M90E26_END_ADDRESS)) {
-        //return true;
         return m90e26_write_reg(address, data);;
     } 
     else if (address == RELAY_REG_START_ADDRESS) {
@@ -136,7 +139,7 @@ bool write_reg(unsigned int address, unsigned int data){
         return false;
     }
     else if ((address>=ERRORS_START_ADDRESS) && (address<=ERRORS_END_ADDRESS)) {
-        return true;
+        return false;
     }
     else if (address == DEBUG_REGS_START_ADDRESS+1) {
         eeprom_write_byte(OSCCAL_EEADDR, data);
@@ -157,23 +160,23 @@ void led_set(bool stat) {
 }
 
 void led_toggle() {
+    // reverse state of STATUS led
     STATUS_LED_PORT ^= (1 << STATUS_LED_PIN);
 
 }
 
 
 void relay_init(){
-    /* Выводим на пины 0, т.е. отключаем
-    ** Потом переводим пины в режим вывода
+    /* 
+    Output LOW to relay pins.
+    Than setup pin to output mode.
     */
 
     update_relay_r1(0);
     update_relay_r2(0);
-    DDRA |= (1 << RELAY_R1 | 1 << RELAY_R2);
+    RELAY_R1_DDR |= (1 << RELAY_R1);
+    RELAY_R2_DDR |= (1 << RELAY_R2);
 }
-
-//Uart serial0;
-//Uart serial1;
 
 
 int main(void)
@@ -196,6 +199,8 @@ int main(void)
         serial_0 = &serial0;
         serial_1 = &serial1;
 
+        #ifdef OSCCAL_CALIBRATION
+        // OSCCAL calibration
         if (perform_forced_calibration || !update_osccal_from_eeprom()) {
             for (int i=0; i<10; i++) {
                 led_toggle();
@@ -203,6 +208,7 @@ int main(void)
                 led_toggle();
                 _delay_ms(250);
             }
+
             osc_calibration_toggle_led = &led_toggle;
             osc_calibration_serial_port = serial_0;
             osc_calibration_SerialWrite =  &softSerialWrite;
@@ -219,14 +225,12 @@ int main(void)
             softSerialEnd();
             perform_forced_calibration = false;
         }
+        #endif
 
         // Relays pins
         relay_init();
 
         // UARTs initialization
-        //softSerialBegin(SOFT_UART0, 9600, &DDRA, &PORTA, &PINA, PA5, PA6);
-        //softSerialBegin(SOFT_UART1, 9600, &DDRA, &PORTA, &PINA, PA0, PA1);
-       
 
         softSerialBegin(serial_0);
         softSerialBegin(serial_1);
@@ -253,19 +257,22 @@ int main(void)
 
         /* loop */
         while (1) {
+            #ifdef OSCCAL_FORCE_CALIBRATION
             if (perform_main_loop_exit) 
                 break;
+            #endif
           
             if (softSerialAvailable(serial_0)) {
-                led_toggle();
                 pull_port(softSerialRead(serial_0));
             }
 
+            #ifdef OSCCAL_FORCE_CALIBRATION
             if (FLAG) {
                 perform_main_loop_exit = true;
                 perform_forced_calibration = true;
                 FLAG = 0;
             }
+            #endif
 
         }
 
@@ -274,7 +281,6 @@ int main(void)
             _delay_ms(150);
         }
         
-
         softSerialEnd();
         millis_end();
     }

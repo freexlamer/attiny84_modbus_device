@@ -148,10 +148,12 @@ void handler(Uart *p){
 		};
 		tunedDelay(p->_rx_delay_stopbit-5);
 		
+		#ifdef OSCCAL_FORCE_CALIBRATION
 		if(!(*p->_PIN&(1<<p->_RX_PIN_NUM))){ //If no stop bit - run timer and measure calibration  impulse width.
 			if (p==serial_0)
 				FLAG=1;
 		};
+		#endif
 		
 		// if buffer full, set the overflow flag and return
 		if (((p->_receive_buffer_tail + 1) & _SS_RX_BUFF_MASK) != p->_receive_buffer_head) {  // circular buffer
@@ -166,6 +168,8 @@ void handler(Uart *p){
 
 
 ISR(PCINT0_vect) {
+
+	#ifdef OSCCAL_FORCE_CALIBRATION
 	interruptTime = TCNT1;
 	if(FLAG){														 //if flag of measurement present - wait for front to end of measuerment. 
 		if(*serial_0->_PIN&(1<<serial_0->_RX_PIN_NUM)){
@@ -178,6 +182,7 @@ ISR(PCINT0_vect) {
 			
 		}
 	}
+	#endif
 	
 	if(!(*serial_0->_PIN&(1<<serial_0->_RX_PIN_NUM))){ 
 		handler(serial_0);
@@ -298,7 +303,7 @@ int softSerialPeek(Uart *p) {
 	return p->_receive_buffer[p->_receive_buffer_head];
 }
 
-
+#ifdef OSCCAL_FORCE_CALIBRATION
 char isCalibDataReady(){
 	if(calibTimeReady){
 		return 1;
@@ -312,3 +317,4 @@ char getImpulsWidth(){
 	calibTimeReading=0;
 	return w;
 }
+#endif

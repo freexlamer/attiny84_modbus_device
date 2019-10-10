@@ -29,6 +29,8 @@ This code configures:
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "settings.h"
+
 
 
 //
@@ -92,8 +94,10 @@ void softSerialFlush(Uart *p);
 
 void handler(Uart *p);
 
+#ifdef OSCCAL_FORCE_CALIBRATION
 char isCalibDataReady();
 char getImpulsWidth();
+#endif
 
 
 #endif
