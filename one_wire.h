@@ -1,6 +1,8 @@
 #ifndef ONE_WIRE_H
 #define ONE_WIRE_H
 
+#include "settings.h"
+
 #include <stdbool.h>
 #include <avr/io.h>
 #include <util/delay.h>

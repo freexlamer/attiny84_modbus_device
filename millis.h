@@ -11,6 +11,8 @@ Based on https://github.com/sourceperl/millis
 #include <avr/interrupt.h>
 #include <util/atomic.h>
 
+#include "settings.h"
+
 #if F_CPU == 1000000
 	#define TIMER0_PRESCALER	(1<<CS01)|(0<<CS00)
 	#define TIMER0_TOP			(F_CPU/8)/1000

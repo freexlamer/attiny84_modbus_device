@@ -225,6 +225,8 @@ int main(void)
             softSerialEnd();
             perform_forced_calibration = false;
         }
+		#else
+		update_osccal_from_eeprom();
         #endif
 
         // Relays pins
