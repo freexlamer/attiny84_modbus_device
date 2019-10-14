@@ -20,7 +20,8 @@ The crc calculation is based on the work published
 
 #include "SoftwareSerial.h"
 
-#define BUFFER_SIZE 16
+#define BUFFER_SIZE 32
+#define OUT_BUFFER_SIZE 16
 
 #define MODBUS_BROADCAST_ID 0x00
 
@@ -31,9 +32,19 @@ The crc calculation is based on the work published
 #define MODBUS_ERROR_SLAVE_DEVICE_FAILURE 0x04
 #define MODBUS_ERROR_CRC 0x10
 
+#define MODBUS_FUNCTION_READ_DO 0x01
+#define MODBUS_FUNCTION_READ_DI 0x02
 #define MODBUS_FUNCTION_READ_AO 0x03
+#define MODBUS_FUNCTION_READ_AI 0x04
+#define MODBUS_FUNCTION_WRITE_DO 0x05
 #define MODBUS_FUNCTION_WRITE_AO 0x06
 #define MODBUS_FUNCTION_WRITE_AO_RESPONSE_SIZE 8
+#define MODBUS_FUNCTION_WRITE_MANY_DO 0x0F
+#define MODBUS_FUNCTION_WRITE_MANY_AO 0x10
+
+#define MODBUS_CRC_SIZE 2
+#define MOBUS_4_BYTES_PDU_SIZE 4 
+
 
 #define M90E26_START_ADDRESS 	0x0000
 #define M90E26_END_ADDRESS 		0x006F
