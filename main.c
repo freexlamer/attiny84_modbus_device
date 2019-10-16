@@ -182,6 +182,7 @@ void relay_init(){
 int main(void)
 {
     uint8_t tmp;
+    uint64_t start_time;
 
     // Ports initialization
     // Status led pin
@@ -257,6 +258,8 @@ int main(void)
 
         sei();
 
+        start_time = millis();
+
         /* loop */
         while (1) {
             #ifdef OSCCAL_FORCE_CALIBRATION
@@ -273,6 +276,13 @@ int main(void)
                 perform_main_loop_exit = true;
                 perform_forced_calibration = true;
                 FLAG = 0;
+            }
+            #endif
+
+            #ifdef POLLING_LOOP_BLINKING_HALF_PERIOD_MS
+            if ((millis()-start_time) > POLLING_LOOP_BLINKING_HALF_PERIOD_MS) {
+                led_toggle();
+                start_time = millis();
             }
             #endif
 

@@ -13,7 +13,7 @@ The crc calculation is based on the work published
 
 #include "tiny_modbus_rtu_slave.h"
 
-unsigned char frame[BUFFER_SIZE+2];
+unsigned char frame[MODBUS_BUFFER_SIZE];
 unsigned char slaveID;
 unsigned char function;
 bool broadcastFlag;
@@ -25,8 +25,8 @@ uint64_t modbus_last_packet_time;
 
 // function definitions
 void exceptionResponse(unsigned char exception);
-unsigned int calculateCRC(unsigned char bufferSize);
-void sendPacket(unsigned char bufferSize);
+unsigned int calculate_CRC16(unsigned char start, unsigned char count);
+void modbus_send_packet(unsigned char start, unsigned char count);
 bool testAddress(unsigned int address);
 
 void modbus_buffer_flush() {
@@ -34,17 +34,228 @@ void modbus_buffer_flush() {
 }
 
 void modbus_init() {
-	modbus_error_count = 0;
-	modbus_crc_errors = 0;
+  modbus_error_count = 0;
+  modbus_crc_errors = 0;
   modbus_buffer_flush();
   modbus_last_packet_time = millis();
 }
 
+bool modbus_data_is_enough(unsigned char start) {
+  unsigned char function_code_index = start + 1;
+  if (function_code_index < buffer) {
+    if ((frame[function_code_index]==MODBUS_FUNCTION_READ_AO) ||
+        (frame[function_code_index]==MODBUS_FUNCTION_WRITE_AO) ||
+        (frame[function_code_index]==MODBUS_FUNCTION_READ_DO) ||
+        (frame[function_code_index]==MODBUS_FUNCTION_READ_DI) ||
+        (frame[function_code_index]==MODBUS_FUNCTION_READ_AI) ||
+        (frame[function_code_index]==MODBUS_FUNCTION_WRITE_DO)) {
+      if ((function_code_index+MODBUS_4_BYTES_PDU_SIZE+MODBUS_CRC_SIZE) < buffer) {
+        return true;
+      }
+    }
+    else if ((frame[function_code_index]==MODBUS_FUNCTION_WRITE_MANY_DO) ||
+             (frame[function_code_index]==MODBUS_FUNCTION_WRITE_MANY_AO)) {
+      unsigned char data_bytes_count_index = function_code_index + MODBUS_4_BYTES_PDU_SIZE + 1;
+      if (data_bytes_count_index < buffer) {
+        unsigned char data_bytes_count = frame[data_bytes_count_index];
+        if ((data_bytes_count_index + data_bytes_count + MODBUS_CRC_SIZE) < buffer) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+bool modbus_data_check_crc(unsigned char start) {
+  unsigned int crc;
+  unsigned char check_data_count;
+  unsigned char data_bytes_count;
+
+  unsigned char function_code_index = start + 1;
+
+  if ((frame[function_code_index]==MODBUS_FUNCTION_READ_AO) ||
+      (frame[function_code_index]==MODBUS_FUNCTION_WRITE_AO) ||
+      (frame[function_code_index]==MODBUS_FUNCTION_READ_DO) ||
+      (frame[function_code_index]==MODBUS_FUNCTION_READ_DI) ||
+      (frame[function_code_index]==MODBUS_FUNCTION_READ_AI) ||
+      (frame[function_code_index]==MODBUS_FUNCTION_WRITE_DO)) {
+    check_data_count = MODBUS_HEADER_SIZE + MODBUS_4_BYTES_PDU_SIZE;
+  }
+  else if ((frame[function_code_index]==MODBUS_FUNCTION_WRITE_MANY_DO) ||
+           (frame[function_code_index]==MODBUS_FUNCTION_WRITE_MANY_AO)) {
+    data_bytes_count = frame[function_code_index + MODBUS_4_BYTES_PDU_SIZE + 1];
+    check_data_count = MODBUS_HEADER_SIZE + MODBUS_4_BYTES_PDU_SIZE + 1 + data_bytes_count;
+  }
+  // combine the crc Low & High bytes
+  crc = ((frame[start + check_data_count + 0] << 8) | frame[start + check_data_count + 1]);
+  return (calculate_CRC16(start, check_data_count) == crc);
+}
+
+void decode_command(unsigned char start) {
+  unsigned char id = frame[start];
+  broadcastFlag = (id == MODBUS_BROADCAST_ID);
+  unsigned int i;
+
+  if (id == slaveID || broadcastFlag) {
+    if (modbus_data_check_crc(0)) {
+      function = frame[start+1];
+      unsigned int crc16;
+
+      if (!broadcastFlag && (function == MODBUS_FUNCTION_READ_AO)) {
+        unsigned int starting_address = ((frame[start+2] << 8) | frame[start+3]);
+        unsigned int count_of_registers = ((frame[start+4] << 8) | frame[start+5]);
+
+        if (testAddress(starting_address)) {
+            #ifdef MODBUS_FUNCTION_READ_AO_READ_MANY
+              unsigned int temp = 0;
+              unsigned char count_of_bytes = count_of_registers * 2;
+              unsigned char responseFrameSize = MODBUS_HEADER_SIZE + 1 + count_of_bytes + MODBUS_CRC_SIZE;
+              if (responseFrameSize <= MODBUS_BUFFER_SIZE) {
+                bool succes = true;
+                frame[0] = slaveID;
+                frame[1] = function;
+                frame[2] = count_of_bytes;
+                unsigned char tmp_index = 3;
+                for (i=0; i<count_of_registers; i++) {
+                  if (testAddress(starting_address + i)) {
+                    if ((*modbus_read_reg)(starting_address + i, &temp)) {
+                      // or [3+i*2]
+                      frame[tmp_index] = temp >> 8;
+                      tmp_index++;
+                      // or [3+i*2+1]
+                      frame[tmp_index] = temp & 0x00FF;
+                      tmp_index++;
+                    } else {
+                      exceptionResponse(MODBUS_ERROR_SLAVE_DEVICE_FAILURE);
+                      succes = false;
+                      break;
+                    }
+                  }
+                  else {
+                    exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_ADDRESS);
+                    succes = false;
+                    break;
+                  }
+                }
+
+                if (succes) {
+                  crc16 = calculate_CRC16(0, responseFrameSize - 2);
+                  frame[responseFrameSize - 2] = crc16 >> 8;
+                  frame[responseFrameSize - 1] = crc16 & 0xFF;
+                  modbus_send_packet(0,responseFrameSize);
+                  modbus_buffer_flush();
+                }
+              }
+              else
+                exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_VALUE);
+            #else
+              if (count_of_registers == 1) {
+                unsigned int temp = 0;
+
+                if ((*modbus_read_reg)(starting_address, &temp)) {
+                  unsigned char count_of_bytes = count_of_registers * 2;
+                  unsigned char responseFrameSize = 5 + count_of_bytes;
+                  frame[0] = slaveID;
+                  frame[1] = function;
+                  frame[2] = count_of_bytes;
+                  frame[3] = temp >> 8;
+                  frame[4] = temp & 0x00FF;
+                  crc16 = calculate_CRC16(0, responseFrameSize - 2);
+                  frame[responseFrameSize - 2] = crc16 >> 8;
+                  frame[responseFrameSize - 1] = crc16 & 0xFF;
+                  modbus_send_packet(0,responseFrameSize);
+                  buffer = 0;
+                }
+                else
+                  exceptionResponse(MODBUS_ERROR_SLAVE_DEVICE_FAILURE);
+              }
+              else {
+                  exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_VALUE);
+              }
+          #endif
+        }
+        else
+          exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_ADDRESS);
+      }
+      else if (function == MODBUS_FUNCTION_WRITE_AO) {
+        unsigned int starting_address = ((frame[start+2] << 8) | frame[start+3]);
+
+        if (testAddress(starting_address)) {
+          unsigned int regStatus = ((frame[start+4] << 8) | frame[start+5]);
+          if ((*modbus_write_reg)(starting_address,regStatus)){
+            modbus_send_packet(start, MODBUS_FUNCTION_WRITE_AO_RESPONSE_SIZE);
+            buffer = 0;
+          }
+          else
+            exceptionResponse(MODBUS_ERROR_SLAVE_DEVICE_FAILURE);
+        }
+        else
+          exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_ADDRESS);
+      }
+      #ifdef MODBUS_FUNCTION_WRITE_MANY_AO_ENABLED
+      else if (function == MODBUS_FUNCTION_WRITE_MANY_AO) {
+        bool succes = true;
+
+        unsigned int starting_address = ((frame[start+2] << 8) | frame[start+3]);
+        unsigned int count_of_registers = ((frame[start+4] << 8) | frame[start+5]);
+        unsigned int tmp_index = 0;
+
+        for (i=0; i<count_of_registers; i++) {
+          if (!testAddress(starting_address+i)) {
+            exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_ADDRESS);
+            succes = false;
+            break;
+          }
+        }
+
+        if (succes) {
+          succes = true;
+          for (i=0; i<count_of_registers; i++) {
+            unsigned int data = ((frame[start+7+tmp_index] << 8) | frame[start+7+tmp_index+1]);
+            tmp_index = tmp_index + 2;
+            if (!(*modbus_write_reg)(starting_address+i,data)){
+              exceptionResponse(MODBUS_ERROR_SLAVE_DEVICE_FAILURE);
+              succes = false;
+              break;
+            }
+          }
+          if (succes) {
+            frame[0] = slaveID;
+            frame[1] = function;
+            frame[2] = starting_address >> 8;
+            frame[3] = starting_address & 0x00FF;
+            frame[4] = count_of_registers >> 8;
+            frame[5] = count_of_registers & 0x00FF;
+            crc16 = calculate_CRC16(0, 6);
+            frame[6] = crc16 >> 8;
+            frame[7] = crc16 & 0x00FF;
+            modbus_send_packet(0, 8);
+            modbus_buffer_flush();
+          }
+        }
+      }
+      #endif
+      else
+        exceptionResponse(MODBUS_ERROR_ILLEGAL_FUNCTION);
+
+    }
+    #ifdef MODBUS_ERROR_CRC_ENABLED
+    else
+    {
+      //modbus_send_packet(buffer);
+      exceptionResponse(MODBUS_ERROR_CRC);
+    }
+    #endif
+  }
+
+}
+
 unsigned char pull_port(int c){
 
-	if (c == -1) {
-		return 0;
-	}
+  if (c == -1) {
+    return 0;
+  }
 
   uint64_t current_time = millis();
   if ( (current_time - modbus_last_packet_time) > MODBUS_COMMAND_TIMEOUT) {
@@ -53,116 +264,42 @@ unsigned char pull_port(int c){
 
   modbus_last_packet_time = current_time;
 
-	if (!overflow) {
-		if (buffer == BUFFER_SIZE) {
-			overflow = true;
-		}
-		frame[buffer] = (unsigned char)c;
-		buffer++;
+  if (!overflow) {
+    if (buffer == MODBUS_BUFFER_SIZE) {
+      overflow = true;
+    }
+
+    frame[buffer] = (unsigned char)c;
+    buffer++;
 	}
 
-	if (overflow) {
-		buffer = 0;
-		overflow = false;
-		return modbus_error_count++;
-	}
+  if (overflow) {
+    overflow = false;
 
-	// The minimum request packet is 8 bytes for function 3 & 16
-	/*
-	Вообще, надо сделать проверку. Если сейчас буфер меньше, чем должны получить данных -
-	то пропускаем и принимаем дальше.
-	*/
-  	if (buffer > 7) {
-  		unsigned char id = frame[0];
-  		broadcastFlag = (id == MODBUS_BROADCAST_ID);
-  		
+    #ifdef MODBUS_ERROR_BUFFER_OVERFLOW_ENABLED
+      exceptionResponse(MODBUS_ERROR_BUFFER_OVERFLOW);
+      return modbus_error_count;
+    #else
+      modbus_buffer_flush();
+      return modbus_error_count++;
+    #endif
+  }
 
-  		if (id == slaveID || broadcastFlag) {
-  			function = frame[1];
-			// костыль!
-			if ((frame[1] != MODBUS_FUNCTION_READ_AO) && (frame[1] != MODBUS_FUNCTION_WRITE_AO)) {
-				exceptionResponse(MODBUS_ERROR_ILLEGAL_FUNCTION);
-				return modbus_error_count;
-			}
-  			// combine the crc Low & High bytes
-  			unsigned int crc = ((frame[buffer - 2] << 8) | frame[buffer - 1]);
-  			
-
-  			if (calculateCRC(buffer - 2) == crc) {
-  				function = frame[1];
-  				unsigned int startingAddress = ((frame[2] << 8) | frame[3]);
-  				unsigned int no_of_registers = ((frame[4] << 8) | frame[5]);
-  				unsigned int crc16;
-
-  				if (!broadcastFlag && (function == MODBUS_FUNCTION_READ_AO)) {
-  					if (testAddress(startingAddress)) {
-  						if (no_of_registers == 1) {
-  							unsigned int temp = 0;
-
-  							if ((*modbus_read_reg)(startingAddress, &temp)) {
-  								unsigned char noOfBytes = no_of_registers * 2;
-	  							unsigned char responseFrameSize = 5 + noOfBytes;
-	  							frame[0] = slaveID;
-	              				frame[1] = function;
-	              				frame[2] = noOfBytes;
-	  							frame[3] = temp >> 8;
-	  							frame[4] = temp & 0x00FF;
-	  							crc16 = calculateCRC(responseFrameSize - 2);
-	  							frame[responseFrameSize - 2] = crc16 >> 8;
-	              				frame[responseFrameSize - 1] = crc16 & 0xFF;
-	  							sendPacket(responseFrameSize);
-	  							buffer = 0;
-  							}
-  							else 
-  								exceptionResponse(MODBUS_ERROR_SLAVE_DEVICE_FAILURE);
-  						}
-  						else
-  							exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_VALUE);
-  					}
-  					else 
-  						exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_ADDRESS);
-  				}
-  				else if (function == MODBUS_FUNCTION_WRITE_AO) {
-  					if (testAddress(startingAddress)) {
-  						unsigned int startingAddress = ((frame[2] << 8) | frame[3]);
-              			unsigned int regStatus = ((frame[4] << 8) | frame[5]);
-
-              			if ((*modbus_write_reg)(startingAddress,regStatus)){
-              				sendPacket(MODBUS_FUNCTION_WRITE_AO_RESPONSE_SIZE);
-              				buffer = 0;
-              			}
-              			else 
-              				exceptionResponse(MODBUS_ERROR_SLAVE_DEVICE_FAILURE);
-  					}
-  					else
-  						exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_ADDRESS);
-  				}
-  				else
-          			exceptionResponse(MODBUS_ERROR_ILLEGAL_FUNCTION);
-
-  			}
-  			else 
-  			{	
-				//sendPacket(buffer);
-  				exceptionResponse(MODBUS_ERROR_CRC);
-  			}
-  		}
-
-
-  	} else {
-  		return 0;
-  	}
-
-  	return 0;
-
+  if (modbus_data_is_enough(0)) {
+    decode_command(0);
+  }
+  else
+  {
+    return 0;
+  }
 }
 
 
-unsigned int calculateCRC(unsigned char bufferSize) 
+unsigned int calculate_CRC16(unsigned char start, unsigned char count)
 {
   unsigned int temp, temp2, flag;
   temp = 0xFFFF;
-  for (unsigned char i = 0; i < bufferSize; i++)
+  for (unsigned char i = start; i < (start+count); i++)
   {
     temp = temp ^ frame[i];
     for (unsigned char j = 1; j <= 8; j++)
@@ -188,22 +325,24 @@ void exceptionResponse(unsigned char exception)
     frame[0] = slaveID;
     frame[1] = (function | MODBUS_ERROR_MARKER); // set the MSB bit high, informs the master of an exception
     frame[2] = exception;
-    unsigned int crc16 = calculateCRC(3); // ID, function + 0x80, exception code == 3 bytes
+    unsigned int crc16 = calculate_CRC16(0, 3); // ID, function + 0x80, exception code == 3 bytes
     frame[3] = crc16 >> 8;
     frame[4] = crc16 & 0xFF;
     // exception response is always 5 bytes ID, function + 0x80, exception code, 2 bytes crc
-    sendPacket(5); 
+    modbus_send_packet(0, 5);
   }
   buffer = 0;
 
+  #ifdef MODBUS_ERROR_CRC_ENABLED
   if (exception == MODBUS_ERROR_CRC)
     modbus_crc_errors++;
+  #endif
 }
 
-void sendPacket(unsigned char bufferSize)
+void modbus_send_packet(unsigned char start, unsigned char count)
 {
   
-  for (unsigned char i = 0; i < bufferSize; i++)
+  for (unsigned char i = start; i < start+count; i++)
     (*modbus_SerialWrite)(frame[i], modbus_serial_port);
  
   // allow a frame delay to indicate end of transmission
