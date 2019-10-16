@@ -34,8 +34,8 @@ void modbus_buffer_flush() {
 }
 
 void modbus_init() {
-	modbus_error_count = 0;
-	modbus_crc_errors = 0;
+  modbus_error_count = 0;
+  modbus_crc_errors = 0;
   modbus_buffer_flush();
   modbus_last_packet_time = millis();
 }
@@ -138,7 +138,7 @@ unsigned char pull_port(int c){
 	}
 
   if (overflow) {
-    buffer = 0;
+    modbus_buffer_flush();
     overflow = false;
     return modbus_error_count++;
   }
