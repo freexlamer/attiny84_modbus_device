@@ -100,11 +100,12 @@ void decode_command(unsigned char start) {
   if (id == slaveID || broadcastFlag) {
     if (modbus_data_check_crc(0)) {
       function = frame[start+1];
-      unsigned int starting_address = ((frame[start+2] << 8) | frame[start+3]);
-      unsigned int count_of_registers = ((frame[start+4] << 8) | frame[start+5]);
       unsigned int crc16;
 
       if (!broadcastFlag && (function == MODBUS_FUNCTION_READ_AO)) {
+        unsigned int starting_address = ((frame[start+2] << 8) | frame[start+3]);
+        unsigned int count_of_registers = ((frame[start+4] << 8) | frame[start+5]);
+
         if (testAddress(starting_address)) {
             #ifdef MODBUS_FUNCTION_READ_AO_READ_MANY
               unsigned int temp = 0;
@@ -178,21 +179,63 @@ void decode_command(unsigned char start) {
           exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_ADDRESS);
       }
       else if (function == MODBUS_FUNCTION_WRITE_AO) {
-        if (testAddress(starting_address)) {
-          unsigned int starting_address = ((frame[start+2] << 8) |
-                                            frame[start+3]);
-          unsigned int regStatus = ((frame[start+4] << 8) | frame[start+5]);
+        unsigned int starting_address = ((frame[start+2] << 8) | frame[start+3]);
 
-                if ((*modbus_write_reg)(starting_address,regStatus)){
-                  modbus_send_packet(start, MODBUS_FUNCTION_WRITE_AO_RESPONSE_SIZE);
-                  buffer = 0;
-                }
-                else
-                  exceptionResponse(MODBUS_ERROR_SLAVE_DEVICE_FAILURE);
+        if (testAddress(starting_address)) {
+          unsigned int regStatus = ((frame[start+4] << 8) | frame[start+5]);
+          if ((*modbus_write_reg)(starting_address,regStatus)){
+            modbus_send_packet(start, MODBUS_FUNCTION_WRITE_AO_RESPONSE_SIZE);
+            buffer = 0;
+          }
+          else
+            exceptionResponse(MODBUS_ERROR_SLAVE_DEVICE_FAILURE);
         }
         else
           exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_ADDRESS);
       }
+      #ifdef MODBUS_FUNCTION_WRITE_MANY_AO_ENABLED
+      else if (function == MODBUS_FUNCTION_WRITE_MANY_AO) {
+        bool succes = true;
+
+        unsigned int starting_address = ((frame[start+2] << 8) | frame[start+3]);
+        unsigned int count_of_registers = ((frame[start+4] << 8) | frame[start+5]);
+        unsigned int tmp_index = 0;
+
+        for (i=0; i<count_of_registers; i++) {
+          if (!testAddress(starting_address+i)) {
+            exceptionResponse(MODBUS_ERROR_ILLEGAL_DATA_ADDRESS);
+            succes = false;
+            break;
+          }
+        }
+
+        if (succes) {
+          succes = true;
+          for (i=0; i<count_of_registers; i++) {
+            unsigned int data = ((frame[start+7+tmp_index] << 8) | frame[start+7+tmp_index+1]);
+            tmp_index = tmp_index + 2;
+            if (!(*modbus_write_reg)(starting_address+i,data)){
+              exceptionResponse(MODBUS_ERROR_SLAVE_DEVICE_FAILURE);
+              succes = false;
+              break;
+            }
+          }
+          if (succes) {
+            frame[0] = slaveID;
+            frame[1] = function;
+            frame[2] = starting_address >> 8;
+            frame[3] = starting_address & 0x00FF;
+            frame[4] = count_of_registers >> 8;
+            frame[5] = count_of_registers & 0x00FF;
+            crc16 = calculate_CRC16(0, 6);
+            frame[6] = crc16 >> 8;
+            frame[7] = crc16 & 0x00FF;
+            modbus_send_packet(0, 8);
+            modbus_buffer_flush();
+          }
+        }
+      }
+      #endif
       else
         exceptionResponse(MODBUS_ERROR_ILLEGAL_FUNCTION);
 
