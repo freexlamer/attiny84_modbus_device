@@ -21,15 +21,23 @@ bool broadcastFlag;
 unsigned char buffer = 0;
 bool overflow = false;
 
+uint64_t modbus_last_packet_time;
+
 // function definitions
 void exceptionResponse(unsigned char exception);
 unsigned int calculateCRC(unsigned char bufferSize);
 void sendPacket(unsigned char bufferSize);
 bool testAddress(unsigned int address);
 
+void modbus_buffer_flush() {
+  buffer = 0;
+}
+
 void modbus_init() {
 	modbus_error_count = 0;
 	modbus_crc_errors = 0;
+  modbus_buffer_flush();
+  modbus_last_packet_time = millis();
 }
 
 unsigned char pull_port(int c){
@@ -37,6 +45,13 @@ unsigned char pull_port(int c){
 	if (c == -1) {
 		return 0;
 	}
+
+  uint64_t current_time = millis();
+  if ( (current_time - modbus_last_packet_time) > MODBUS_COMMAND_TIMEOUT) {
+    modbus_buffer_flush();
+  }
+
+  modbus_last_packet_time = current_time;
 
 	if (!overflow) {
 		if (buffer == BUFFER_SIZE) {

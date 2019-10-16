@@ -18,9 +18,14 @@ The crc calculation is based on the work published
 #include <stddef.h>
 #include <util/delay.h>
 
+#include "settings.h"
 #include "SoftwareSerial.h"
+#include "millis.h"
 
 #define BUFFER_SIZE 16
+// (1/BAUD)*PACKET_SIZE*3.5*1000 = timeout in ms
+// (1/9600)*10*3.5*1000 = near 3
+#define MODBUS_COMMAND_TIMEOUT UINT64_C(1000*10*3.5/UART0_BAUDRATE)
 
 #define MODBUS_BROADCAST_ID 0x00
 
