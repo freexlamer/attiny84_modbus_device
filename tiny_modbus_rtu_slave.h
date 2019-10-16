@@ -24,7 +24,7 @@ The crc calculation is based on the work published
 
 //#define MODBUS_ERROR_BUFFER_OVERFLOV_ENABLED	1
 
-#define BUFFER_SIZE 32
+#define MODBUS_BUFFER_SIZE 32
 // (1/BAUD)*PACKET_SIZE*3.5*1000 = timeout in ms
 // (1/9600)*10*3.5*1000 = near 3
 #define MODBUS_COMMAND_TIMEOUT UINT64_C(1000*10*3.5/UART0_BAUDRATE)
