@@ -13,7 +13,7 @@ The crc calculation is based on the work published
 
 #include "tiny_modbus_rtu_slave.h"
 
-unsigned char frame[BUFFER_SIZE+2];
+unsigned char frame[BUFFER_SIZE];
 unsigned char slaveID;
 unsigned char function;
 bool broadcastFlag;
@@ -40,19 +40,64 @@ void modbus_init() {
   modbus_last_packet_time = millis();
 }
 
+bool modbus_data_is_enough(unsigned char start) {
+  unsigned char function_code_index = start + 1;
+  if (function_code_index < buffer) {
+    if ((frame[function_code_index]==MODBUS_FUNCTION_READ_AO) ||
+        (frame[function_code_index]==MODBUS_FUNCTION_WRITE_AO) ||
+        (frame[function_code_index]==MODBUS_FUNCTION_READ_DO) ||
+        (frame[function_code_index]==MODBUS_FUNCTION_READ_DI) ||
+        (frame[function_code_index]==MODBUS_FUNCTION_READ_AI) ||
+        (frame[function_code_index]==MODBUS_FUNCTION_WRITE_DO)) {
+      if ((function_code_index+MODBUS_4_BYTES_PDU_SIZE+MODBUS_CRC_SIZE) < buffer) {
+        return true;
+      }
+    }
+    else if ((frame[function_code_index]==MODBUS_FUNCTION_WRITE_MANY_DO) ||
+             (frame[function_code_index]==MODBUS_FUNCTION_WRITE_MANY_AO)) {
+      unsigned char data_bytes_count_index = function_code_index + MODBUS_4_BYTES_PDU_SIZE + 1;
+      if (data_bytes_count_index < buffer) {
+        unsigned char data_bytes_count = frame[data_bytes_count_index];
+        if ((data_bytes_count_index + data_bytes_count + MODBUS_CRC_SIZE) < buffer) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+bool modbus_data_check_crc(unsigned char start) {
+  unsigned int crc;
+  unsigned char check_data_count;
+  unsigned char data_bytes_count;
+
+  unsigned char function_code_index = start + 1;
+
+  if ((frame[function_code_index]==MODBUS_FUNCTION_READ_AO) ||
+      (frame[function_code_index]==MODBUS_FUNCTION_WRITE_AO) ||
+      (frame[function_code_index]==MODBUS_FUNCTION_READ_DO) ||
+      (frame[function_code_index]==MODBUS_FUNCTION_READ_DI) ||
+      (frame[function_code_index]==MODBUS_FUNCTION_READ_AI) ||
+      (frame[function_code_index]==MODBUS_FUNCTION_WRITE_DO)) {
+    check_data_count = MODBUS_HEADER_SIZE + MODBUS_4_BYTES_PDU_SIZE;
+  }
+  else if ((frame[function_code_index]==MODBUS_FUNCTION_WRITE_MANY_DO) ||
+           (frame[function_code_index]==MODBUS_FUNCTION_WRITE_MANY_AO)) {
+    data_bytes_count = frame[function_code_index + MODBUS_4_BYTES_PDU_SIZE + 1];
+    check_data_count = MODBUS_HEADER_SIZE + MODBUS_4_BYTES_PDU_SIZE + 1 + data_bytes_count;
+  }
+  // combine the crc Low & High bytes
+  crc = ((frame[start + check_data_count + 0] << 8) | frame[start + check_data_count + 1]);
+  return (calculate_CRC16(start, check_data_count) == crc);
+}
+
 void decode_command(unsigned char start) {
   unsigned char id = frame[start];
   broadcastFlag = (id == MODBUS_BROADCAST_ID);
 
   if (id == slaveID || broadcastFlag) {
-    // combine the crc Low & High bytes
-    // костыль
-    unsigned int crc = (
-      (frame[start + MODBUS_HEADER_SIZE + MODBUS_4_BYTES_PDU_SIZE + 0] << 8) |
-      frame[start + MODBUS_HEADER_SIZE + MODBUS_4_BYTES_PDU_SIZE + 1]
-    );
-
-    if (calculate_CRC16(start, MODBUS_HEADER_SIZE + MODBUS_4_BYTES_PDU_SIZE) == crc) {
+    if (modbus_data_check_crc(0)) {
       function = frame[start+1];
       unsigned int starting_address = ((frame[start+2] << 8) | frame[start+3]);
       unsigned int count_of_registers = ((frame[start+4] << 8) | frame[start+5]);
@@ -138,17 +183,18 @@ unsigned char pull_port(int c){
 	}
 
   if (overflow) {
-    modbus_buffer_flush();
     overflow = false;
-    return modbus_error_count++;
+
+    #ifdef MODBUS_ERROR_BUFFER_OVERFLOW_ENABLED
+      exceptionResponse(MODBUS_ERROR_BUFFER_OVERFLOW);
+      return modbus_error_count;
+    #else
+      modbus_buffer_flush();
+      return modbus_error_count++;
+    #endif
   }
 
-	// The minimum request packet is 8 bytes for function 3 & 16
-	/*
-	Вообще, надо сделать проверку. Если сейчас буфер меньше, чем должны получить данных -
-	то пропускаем и принимаем дальше.
-	*/
-  if (buffer > 7) {
+  if (modbus_data_is_enough(0)) {
     decode_command(0);
   }
   else
