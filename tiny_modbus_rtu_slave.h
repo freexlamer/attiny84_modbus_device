@@ -36,6 +36,10 @@ The crc calculation is based on the work published
 #define MODBUS_ERROR_SLAVE_DEVICE_FAILURE 0x04
 #define MODBUS_ERROR_CRC 0x10
 
+#define MODBUS_CRC_SIZE				2
+#define MODBUS_HEADER_SIZE			2
+#define MODBUS_4_BYTES_PDU_SIZE		4
+
 #define MODBUS_FUNCTION_READ_AO 0x03
 #define MODBUS_FUNCTION_WRITE_AO 0x06
 #define MODBUS_FUNCTION_WRITE_AO_RESPONSE_SIZE 8
