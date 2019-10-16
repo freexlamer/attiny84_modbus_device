@@ -151,11 +151,13 @@ void decode_command(unsigned char start) {
         exceptionResponse(MODBUS_ERROR_ILLEGAL_FUNCTION);
 
     }
+    #ifdef MODBUS_ERROR_CRC_ENABLED
     else
     {
-    //modbus_send_packet(buffer);
+      //modbus_send_packet(buffer);
       exceptionResponse(MODBUS_ERROR_CRC);
     }
+    #endif
   }
 
 }
@@ -242,8 +244,10 @@ void exceptionResponse(unsigned char exception)
   }
   buffer = 0;
 
+  #ifdef MODBUS_ERROR_CRC_ENABLED
   if (exception == MODBUS_ERROR_CRC)
     modbus_crc_errors++;
+  #endif
 }
 
 void modbus_send_packet(unsigned char start, unsigned char count)
