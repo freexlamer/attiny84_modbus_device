@@ -76,7 +76,7 @@ The crc calculation is based on the work published
 unsigned char slaveID;
 Uart *modbus_serial_port;
 unsigned int modbus_crc_errors;
-unsigned char modbus_error_count;
+unsigned int modbus_error_count;
 
 size_t (*modbus_SerialWrite)(uint8_t b, Uart *p);
 bool (*modbus_read_reg)(unsigned int address, unsigned int *data);

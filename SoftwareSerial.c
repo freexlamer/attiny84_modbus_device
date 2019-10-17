@@ -78,7 +78,7 @@ static const DELAY_TABLE table[] PROGMEM =
 	{ 28800,    11,         35,        35,     32,     },
 	{ 19200,    20,         55,        55,     52,     },
 	{ 14400,    30,         75,        75,     72,     },
-	{ 9600,     50,         114,       114,    112,    },
+	{ 9600,     40,         113,       114,    112,    },
 	{ 4800,     110,        233,       233,    230,    },
 	{ 2400,     229,        472,       472,    469,    },
 	{ 1200,     467,        948,       948,    945,    },
@@ -128,42 +128,45 @@ inline void tunedDelay(uint16_t delay) {
 }
 
 void handler(Uart *p){
-	pWidth=interruptTime;
-	PORTB^=1;
+	//pWidth=interruptTime;
 	uint8_t d = 0;
-	// If RX line is high, then we don't see any start bit
-	// so interrupt is probably not for us
-	if ( !(*p->_PIN&(1<<p->_RX_PIN_NUM)) ) {
-		// Wait approximately 1/2 of a bit width to "center" the sample
-		tunedDelay(p->_rx_delay_centering);
 
-		// Read each of the 8 bits
-		for (uint8_t i = 0x1; i; i <<= 1) {
-			tunedDelay(p->_rx_delay_intrabit-1);
-			uint8_t noti = ~i;
-			if ((*p->_PIN&(1<<p->_RX_PIN_NUM)))
-			d |= i;
-			else // else clause added to ensure function timing is ~balanced
-			d &= noti;
-		};
+	// Wait approximately 1/2 of a bit width to "center" the sample
+	//tunedDelay(p->_rx_delay_intrabit);
+	tunedDelay(p->_rx_delay_centering);
+
+	// Read each of the 8 bits
+	for (uint8_t i = 0x1; i; i <<= 1) {
+		tunedDelay(p->_rx_delay_intrabit);
+		uint8_t noti = ~i;
+		if ((*p->_PIN&(1<<p->_RX_PIN_NUM)))
+		d |= i;
+		else // else clause added to ensure function timing is ~balanced
+		d &= noti;
+	};
+	//tunedDelay(p->_rx_delay_stopbit-5);
+
+	#ifdef OSCCAL_FORCE_CALIBRATION
+		//tunedDelay(p->_rx_delay_intrabit);
 		tunedDelay(p->_rx_delay_stopbit-5);
-		
-		#ifdef OSCCAL_FORCE_CALIBRATION
-		if(!(*p->_PIN&(1<<p->_RX_PIN_NUM))){ //If no stop bit - run timer and measure calibration  impulse width.
+		if(!(*p->_PIN&(1<<p->_RX_PIN_NUM))&&(d==0)){ //If no stop bit - run timer and measure calibration  impulse width.
 			if (p==serial_0)
 				FLAG=1;
 		};
-		#endif
-		
-		// if buffer full, set the overflow flag and return
-		if (((p->_receive_buffer_tail + 1) & _SS_RX_BUFF_MASK) != p->_receive_buffer_head) {  // circular buffer
-			// save new data in buffer: tail points to where byte goes
-			p->_receive_buffer[p->_receive_buffer_tail] = d; // save new byte
-			p->_receive_buffer_tail = (p->_receive_buffer_tail + 1) & _SS_RX_BUFF_MASK;  // circular buffer
-			} else {
-			p->_buffer_overflow = true;
-		}
+		//tunedDelay(p->_rx_delay_centering);
+	#else
+		tunedDelay(p->_rx_delay_stopbit);
+	#endif
+
+	// if buffer full, set the overflow flag and return
+	if (((p->_receive_buffer_tail + 1) & _SS_RX_BUFF_MASK) != p->_receive_buffer_head) {  // circular buffer
+		// save new data in buffer: tail points to where byte goes
+		p->_receive_buffer[p->_receive_buffer_tail] = d; // save new byte
+		p->_receive_buffer_tail = (p->_receive_buffer_tail + 1) & _SS_RX_BUFF_MASK;  // circular buffer
+		} else {
+		p->_buffer_overflow = true;
 	}
+
 }
 
 
@@ -175,7 +178,6 @@ ISR(PCINT0_vect) {
 		if(*serial_0->_PIN&(1<<serial_0->_RX_PIN_NUM)){
 			FLAG=0;
 			if(!calibTimeReading){
-				PORTB^=1;
 				pWidth=(interruptTime - pWidth);
 			}
 			calibTimeReady=1;
